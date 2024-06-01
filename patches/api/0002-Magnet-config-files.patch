@@ -1,21 +1,20 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
-Date: Fri, 31 May 2024 19:56:20 +0800
+Date: Sat, 1 Jun 2024 19:25:39 +0800
 Subject: [PATCH] Magnet config files
 
 
 diff --git a/src/main/java/org/bukkit/Server.java b/src/main/java/org/bukkit/Server.java
-index a7fcd00ae37f9a2026759642562b1059c9dd9526..6bea9781f60ed0c19fa65b464f6787d54ca67030 100644
+index a7fcd00ae37f9a2026759642562b1059c9dd9526..6bae67425580fc6fe3e96306dc3cc8ee6254473a 100644
 --- a/src/main/java/org/bukkit/Server.java
 +++ b/src/main/java/org/bukkit/Server.java
-@@ -1629,6 +1629,14 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
+@@ -1629,6 +1629,13 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
          }
          // Purpur end
  
 +        // Magnet start
 +        @NotNull
-+        public org.bukkit.configuration.file.YamlConfiguration getMagnetConfig()
-+        {
++        public org.bukkit.configuration.file.YamlConfiguration getMagnetConfig() {
 +            throw new UnsupportedOperationException("Not supported yet.");
 +        }
 +        // Magnet end

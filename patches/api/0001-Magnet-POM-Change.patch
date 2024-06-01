@@ -1,18 +1,18 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
-Date: Sat, 1 Jun 2024 01:00:52 +0800
+Date: Sat, 1 Jun 2024 19:24:22 +0800
 Subject: [PATCH] Magnet POM Change
 
 
 diff --git a/pom.xml b/pom.xml
-index 6fd6066b16d4dbf8695be16ec8b2d135d4d04901..02e3d6c4a3c4332ef07174892e14d099fac1144b 100644
+index 6fd6066b16d4dbf8695be16ec8b2d135d4d04901..ef1dafaa050c2c2bb782182aec41b67459cfdad3 100644
 --- a/pom.xml
 +++ b/pom.xml
 @@ -30,6 +30,11 @@
              <id>sonatype</id>
              <url>https://oss.sonatype.org/content/groups/public/</url>
          </repository>
-+        <!-- Magnet start - extra repo for dependencies -->
++        <!-- Magnet - extra repo for dependencies -->
 +        <repository>
 +            <id>paper-repo</id>
 +            <url>https://repo.papermc.io/repository/maven-public/</url>
