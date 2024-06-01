@@ -1,0 +1,96 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Sat, 1 Jun 2024 19:45:23 +0800
+Subject: [PATCH] Move config file to better place
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 4950796a2538d8ed9637c5e90128bc60a4189f90..6d601c4cf0191aafd629a4ed3fd5bfbd7c258881 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -1023,7 +1023,7 @@ public final class CraftServer implements Server {
+ 
+     @SuppressWarnings({ "unchecked", "finally" })
+     private void loadCustomPermissions() {
+-        File file = new File(configuration.getString("settings.permissions-file"));
++        File file = new File("config", configuration.getString("settings.permissions-file")); // Magnet
+         FileInputStream stream;
+ 
+         try {
+@@ -1053,7 +1053,7 @@ public final class CraftServer implements Server {
+         }
+ 
+         if (perms == null) {
+-            getLogger().log(Level.INFO, "Server permissions file " + file + " is empty, ignoring it");
++            //getLogger().log(Level.INFO, "Server permissions file " + file + " is empty, ignoring it"); // Magnet - mute noisy message
+             return;
+         }
+ 
+diff --git a/src/main/java/org/bukkit/craftbukkit/Main.java b/src/main/java/org/bukkit/craftbukkit/Main.java
+index cf0d058874713ccf8b1097b0743db0af06de2df9..42cf3084f8bd038e5f5c63c7730644fe3dad890e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/Main.java
++++ b/src/main/java/org/bukkit/craftbukkit/Main.java
+@@ -110,13 +110,13 @@ public class Main {
+                 acceptsAll(asList("b", "bukkit-settings"), "File for bukkit settings")
+                         .withRequiredArg()
+                         .ofType(File.class)
+-                        .defaultsTo(new File("bukkit.yml"))
++                        .defaultsTo(new File("config", "bukkit.yml")) // Magnet
+                         .describedAs("Yml file");
+ 
+                 acceptsAll(asList("C", "commands-settings"), "File for command settings")
+                         .withRequiredArg()
+                         .ofType(File.class)
+-                        .defaultsTo(new File("commands.yml"))
++                        .defaultsTo(new File("config", "commands.yml")) // Magnet
+                         .describedAs("Yml file");
+ 
+                 acceptsAll(asList("forceUpgrade"), "Whether to force a world upgrade");
+@@ -135,7 +135,7 @@ public class Main {
+                 acceptsAll(asList("S", "spigot-settings"), "File for spigot settings")
+                         .withRequiredArg()
+                         .ofType(File.class)
+-                        .defaultsTo(new File("spigot.yml"))
++                        .defaultsTo(new File("config", "spigot.yml")) // Magnet
+                         .describedAs("Yml file");
+                 // Spigot End
+ 
+@@ -143,14 +143,14 @@ public class Main {
+                 acceptsAll(asList("paper", "paper-settings"), "File for paper settings")
+                         .withRequiredArg()
+                         .ofType(File.class)
+-                        .defaultsTo(new File("paper.yml"))
++                        .defaultsTo(new File("config", "paper.yml")) // Magnet
+                         .describedAs("Yml file");
+                 // Paper end
+                 // Tuinity Start - Server Config
+                 acceptsAll(asList("tuinity", "tuinity-settings"), "File for tuinity settings")
+                         .withRequiredArg()
+                         .ofType(File.class)
+-                        .defaultsTo(new File("tuinity.yml"))
++                        .defaultsTo(new File("config", "tuinity.yml")) // Magnet
+                         .describedAs("Yml file");
+                 /* Conctete End - Server Config */
+ 
+@@ -158,7 +158,7 @@ public class Main {
+                 acceptsAll(asList("purpur", "purpur-settings"), "File for purpur settings")
+                         .withRequiredArg()
+                         .ofType(File.class)
+-                        .defaultsTo(new File("purpur.yml"))
++                        .defaultsTo(new File("config", "purpur.yml")) // Magnet
+                         .describedAs("Yml file");
+                 // Purpur end
+ 
+diff --git a/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java b/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java
+index d3f17d4cde99c4948244f53e6f54326e4f180b99..ed915bad4ca78e0de3df758b6c7c23c8fcb5050e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java
++++ b/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java
+@@ -25,7 +25,7 @@ public class HelpYamlReader {
+     public HelpYamlReader(Server server) {
+         this.server = server;
+ 
+-        File helpYamlFile = new File("help.yml");
++        File helpYamlFile = new File("config", "help.yml"); // Magnet
+         YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(getClass().getClassLoader().getResourceAsStream("configurations/help.yml"), Charsets.UTF_8));
+ 
+         try {
