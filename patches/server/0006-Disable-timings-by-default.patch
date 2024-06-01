@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Sat, 1 Jun 2024 20:05:55 +0800
+Subject: [PATCH] Disable timings by default
+
+
+diff --git a/src/main/java/com/destroystokyo/paper/PaperConfig.java b/src/main/java/com/destroystokyo/paper/PaperConfig.java
+index 10126cb1c3efa2e6c84f20c0da701a131a5dd4cb..0c46082369f1531dc2baaa339c4efa745e64f094 100644
+--- a/src/main/java/com/destroystokyo/paper/PaperConfig.java
++++ b/src/main/java/com/destroystokyo/paper/PaperConfig.java
+@@ -206,7 +206,7 @@ public class PaperConfig {
+ 
+     public static String timingsServerName;
+     private static void timings() {
+-        boolean timings = getBoolean("timings.enabled", true);
++        boolean timings = getBoolean("timings.enabled", false); // Magnet - default disable timings
+         boolean verboseTimings = getBoolean("timings.verbose", true);
+         TimingsManager.privacy = getBoolean("timings.server-name-privacy", false);
+         TimingsManager.hiddenConfigs = getList("timings.hidden-config-entries", Lists.newArrayList("database", "settings.bungeecord-addresses", "settings.velocity-support.secret"));
+diff --git a/src/main/java/net/pl3x/purpur/PurpurConfig.java b/src/main/java/net/pl3x/purpur/PurpurConfig.java
+index 9cdceb1e10ca83a8ada5c8cd80599c4026c079ae..5961bb864780b5ba7f31a2a434bf3809529f3b86 100644
+--- a/src/main/java/net/pl3x/purpur/PurpurConfig.java
++++ b/src/main/java/net/pl3x/purpur/PurpurConfig.java
+@@ -192,7 +192,7 @@ public class PurpurConfig {
+         serverModName = getString("settings.server-mod-name", serverModName);
+     }
+ 
+-    public static String timingsUrl = "https://timings.pl3x.net";
++    public static String timingsUrl = "https://timings.aikar.co"; // Magnet - revert aikar's timings
+     private static void timingsSettings() {
+         timingsUrl = getString("settings.timings.url", timingsUrl);
+         if (!TimingsManager.hiddenConfigs.contains("server-ip")) TimingsManager.hiddenConfigs.add("server-ip");
