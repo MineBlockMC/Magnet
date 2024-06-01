@@ -5,23 +5,47 @@ Subject: [PATCH] Magnet rebrand
 
 
 diff --git a/pom.xml b/pom.xml
-index 3ef0a08b7a38040e43670d18dc6c5542f9fbb9bb..e003399b40c889407fcef294842df5fadbe85433 100644
+index 3ef0a08b7a38040e43670d18dc6c5542f9fbb9bb..9505999d621395c084ecbf24ef2d7f5014e6e7d9 100644
 --- a/pom.xml
 +++ b/pom.xml
-@@ -201,7 +201,12 @@
+@@ -201,8 +201,14 @@
          <!-- Purpur - Snapshots -->
          <repository>
              <id>purpur-snapshots</id>
 -            <url>https://repo.pl3x.net/</url>
 +            <url>https://repo.purpurmc.org/</url>
-+        </repository>
+         </repository>
 +        <!-- Magnet start - extra repo for dependencies -->
 +        <repository>
 +            <id>paper-repo</id>
 +            <url>https://repo.papermc.io/repository/maven-public/</url>
-         </repository>
++        </repository>
++        <!-- Magnet end -->
      </repositories>
  
+     <!-- This builds a completely 'ready to start' jar with all dependencies inside -->
+diff --git a/src/main/java/com/destroystokyo/paper/Metrics.java b/src/main/java/com/destroystokyo/paper/Metrics.java
+index 4d8740678049aa749b42618470e9cc838555528d..bc2f56810e039f078662e4ba67f327b6641a3018 100644
+--- a/src/main/java/com/destroystokyo/paper/Metrics.java
++++ b/src/main/java/com/destroystokyo/paper/Metrics.java
+@@ -593,7 +593,7 @@ public class Metrics {
+             boolean logFailedRequests = config.getBoolean("logFailedRequests", false);
+             // Only start Metrics, if it's enabled in the config
+             if (config.getBoolean("enabled", true)) {
+-                Metrics metrics = new Metrics("Purpur", serverUUID, logFailedRequests, Bukkit.getLogger()); // Purpur
++                Metrics metrics = new Metrics("Magnet", serverUUID, logFailedRequests, Bukkit.getLogger()); // Purpur // Magnet
+ 
+                 metrics.addCustomChart(new Metrics.SimplePie("minecraft_version", () -> {
+                     String minecraftVersion = Bukkit.getVersion();
+@@ -603,7 +603,7 @@ public class Metrics {
+ 
+                 metrics.addCustomChart(new Metrics.SingleLineChart("players", () -> Bukkit.getOnlinePlayers().size()));
+                 metrics.addCustomChart(new Metrics.SimplePie("online_mode", () -> Bukkit.getOnlineMode() ? "online" : (PaperConfig.isProxyOnlineMode() ? "bungee" : "offline"))); // Purpur
+-                metrics.addCustomChart(new Metrics.SimplePie("purpur_version", () -> (Metrics.class.getPackage().getImplementationVersion() != null) ? Metrics.class.getPackage().getImplementationVersion() : "unknown")); // Purpur
++                metrics.addCustomChart(new Metrics.SimplePie("magnet_version", () -> (Metrics.class.getPackage().getImplementationVersion() != null) ? Metrics.class.getPackage().getImplementationVersion() : "unknown")); // Purpur // Magnet
+ 
+                 metrics.addCustomChart(new Metrics.DrilldownPie("java_version", () -> {
+                     Map<String, Map<String, Integer>> map = new HashMap<>();
 diff --git a/src/main/java/com/destroystokyo/paper/console/PaperConsole.java b/src/main/java/com/destroystokyo/paper/console/PaperConsole.java
 index e56ebeaaa12494817d31099eed54ef2c50b98b9e..463db4d2348540d3a2a317972f622ced8e2ce6d1 100644
 --- a/src/main/java/com/destroystokyo/paper/console/PaperConsole.java
