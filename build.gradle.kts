@@ -47,3 +47,7 @@ subprojects {
         credentials(PasswordCredentials::class)
     }
 }
+
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+}
