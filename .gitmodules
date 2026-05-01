@@ -1,0 +1,7 @@
+[submodule "Purpur"]
+	path = Purpur
+	url = https://github.com/PurpurMC/Purpur.git
+	branch = ver/1.16.5
+[submodule "Dionysus"]
+	path = Dionysus
+	url = https://github.com/nopjmp/Dionysus
