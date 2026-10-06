@@ -1,0 +1,211 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Tue, 6 Oct 2026 21:19:24 +0800
+Subject: [PATCH] Magnet Rebrand
+
+
+diff --git a/src/main/java/com/destroystokyo/paper/Metrics.java b/src/main/java/com/destroystokyo/paper/Metrics.java
+index cb833d15b3ae128b005c9dd042dacfe8a8323fdd..c70c94dde22c3d7d00d4abe7f3287d82ca9880c0 100644
+--- a/src/main/java/com/destroystokyo/paper/Metrics.java
++++ b/src/main/java/com/destroystokyo/paper/Metrics.java
+@@ -578,7 +578,7 @@ public class Metrics {
+             boolean logFailedRequests = config.getBoolean("logFailedRequests", false);
+             // Only start Metrics, if it's enabled in the config
+             if (config.getBoolean("enabled", true)) {
+-                Metrics metrics = new Metrics("Dionysus", serverUUID, logFailedRequests, Bukkit.getLogger());
++                Metrics metrics = new Metrics("Magnet", serverUUID, logFailedRequests, Bukkit.getLogger());
+ 
+                 metrics.addCustomChart(new Metrics.SimplePie("minecraft_version", () -> {
+                     String minecraftVersion = Bukkit.getVersion();
+@@ -588,7 +588,7 @@ public class Metrics {
+ 
+                 metrics.addCustomChart(new Metrics.SingleLineChart("players", () -> Bukkit.getOnlinePlayers().size()));
+                 metrics.addCustomChart(new Metrics.SimplePie("online_mode", () -> Bukkit.getOnlineMode() ? "online" : "offline"));
+-                metrics.addCustomChart(new Metrics.SimplePie("dionysus_version", () -> (Metrics.class.getPackage().getImplementationVersion() != null) ? Metrics.class.getPackage().getImplementationVersion() : "unknown")); // Dionysus - use our bstats
++                metrics.addCustomChart(new Metrics.SimplePie("magnet_version", () -> (Metrics.class.getPackage().getImplementationVersion() != null) ? Metrics.class.getPackage().getImplementationVersion() : "unknown")); // Dionysus - use our bstats
+ 
+                 metrics.addCustomChart(new Metrics.DrilldownPie("java_version", () -> {
+                     Map<String, Map<String, Integer>> map = new HashMap<>();
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 897df74f5d3a4f56a1a075743bd7ce84566e81b1..3773223e2a788b3105152d54e0bfaf0cff66e8ef 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -1,55 +1,34 @@
+ package org.bukkit.craftbukkit;
+ 
+-import java.awt.image.BufferedImage;
+-import java.io.File;
+-import java.io.FileInputStream;
+-import java.io.FileNotFoundException;
+-import java.io.IOException;
+-import java.io.InputStreamReader;
+-import java.util.ArrayList;
+-import java.util.Arrays;
+-import java.util.Collections;
+-import java.util.HashSet;
+-import java.util.Iterator;
+-import java.util.LinkedHashMap;
+-import java.util.LinkedHashSet;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-import java.util.UUID;
+-import java.util.logging.Level;
+-import java.util.logging.Logger;
+-import java.util.regex.Pattern;
+-
+-import javax.imageio.ImageIO;
+-
++import com.google.common.base.Charsets;
++import com.google.common.base.Function;
++import com.google.common.base.Preconditions;
++import com.google.common.collect.ImmutableList;
++import com.google.common.collect.Iterators;
++import com.google.common.collect.Lists;
++import com.mojang.authlib.GameProfile;
+ import dev.pomf.dionysus.DionysusConfig;
+ import dev.pomf.dionysus.util.linear.LinearRegionFile;
+ import dev.pomf.dionysus.util.linear.LinearRegionFileCache;
++import io.netty.buffer.ByteBuf;
++import io.netty.buffer.ByteBufOutputStream;
++import io.netty.buffer.Unpooled;
++import io.netty.handler.codec.base64.Base64;
++import net.md_5.bungee.api.chat.BaseComponent;
+ import net.minecraft.server.*;
+-
+-import org.bukkit.BanList;
+-import org.bukkit.Bukkit;
+-import org.bukkit.ChatColor;
+-import org.bukkit.GameMode;
+-import org.bukkit.Location;
+-import org.bukkit.OfflinePlayer;
+-import org.bukkit.Server;
+-import org.bukkit.UnsafeValues;
++import net.minecraft.server.WorldType;
++import org.apache.commons.lang.StringUtils;
++import org.apache.commons.lang.Validate;
++import org.bukkit.*;
+ import org.bukkit.Warning.WarningState;
+ import org.bukkit.World;
+ import org.bukkit.World.Environment;
+-import org.bukkit.WorldCreator;
+ import org.bukkit.boss.BarColor;
+ import org.bukkit.boss.BarFlag;
+ import org.bukkit.boss.BarStyle;
+ import org.bukkit.boss.BossBar;
+-import org.bukkit.command.Command;
++import org.bukkit.command.*;
+ import org.bukkit.command.CommandException;
+-import org.bukkit.command.CommandSender;
+-import org.bukkit.command.ConsoleCommandSender;
+-import org.bukkit.command.PluginCommand;
+-import org.bukkit.command.SimpleCommandMap;
+ import org.bukkit.configuration.ConfigurationSection;
+ import org.bukkit.configuration.file.YamlConfiguration;
+ import org.bukkit.configuration.serialization.ConfigurationSerialization;
+@@ -59,14 +38,7 @@ import org.bukkit.craftbukkit.command.VanillaCommandWrapper;
+ import org.bukkit.craftbukkit.entity.CraftPlayer;
+ import org.bukkit.craftbukkit.generator.CraftChunkData;
+ import org.bukkit.craftbukkit.help.SimpleHelpMap;
+-import org.bukkit.craftbukkit.inventory.CraftFurnaceRecipe;
+-import org.bukkit.craftbukkit.inventory.CraftInventoryCustom;
+-import org.bukkit.craftbukkit.inventory.CraftItemFactory;
+-import org.bukkit.craftbukkit.inventory.CraftMerchantCustom;
+-import org.bukkit.craftbukkit.inventory.CraftRecipe;
+-import org.bukkit.craftbukkit.inventory.CraftShapedRecipe;
+-import org.bukkit.craftbukkit.inventory.CraftShapelessRecipe;
+-import org.bukkit.craftbukkit.inventory.RecipeIterator;
++import org.bukkit.craftbukkit.inventory.*;
+ import org.bukkit.craftbukkit.map.CraftMapView;
+ import org.bukkit.craftbukkit.metadata.EntityMetadataStore;
+ import org.bukkit.craftbukkit.metadata.PlayerMetadataStore;
+@@ -74,10 +46,7 @@ import org.bukkit.craftbukkit.metadata.WorldMetadataStore;
+ import org.bukkit.craftbukkit.potion.CraftPotionBrewer;
+ import org.bukkit.craftbukkit.scheduler.CraftScheduler;
+ import org.bukkit.craftbukkit.scoreboard.CraftScoreboardManager;
+-import org.bukkit.craftbukkit.util.CraftIconCache;
+-import org.bukkit.craftbukkit.util.CraftMagicNumbers;
+-import org.bukkit.craftbukkit.util.DatFileFilter;
+-import org.bukkit.craftbukkit.util.Versioning;
++import org.bukkit.craftbukkit.util.*;
+ import org.bukkit.craftbukkit.util.permissions.CraftDefaultPermissions;
+ import org.bukkit.entity.Entity;
+ import org.bukkit.entity.Player;
+@@ -85,65 +54,41 @@ import org.bukkit.event.command.UnknownCommandEvent; // Paper
+ import org.bukkit.event.inventory.InventoryType;
+ import org.bukkit.event.player.PlayerChatTabCompleteEvent;
+ import org.bukkit.event.server.BroadcastMessageEvent;
++import org.bukkit.event.server.TabCompleteEvent;
+ import org.bukkit.event.world.WorldInitEvent;
+ import org.bukkit.event.world.WorldLoadEvent;
+ import org.bukkit.event.world.WorldUnloadEvent;
+ import org.bukkit.generator.ChunkGenerator;
+ import org.bukkit.help.HelpMap;
+-import org.bukkit.inventory.FurnaceRecipe;
++import org.bukkit.inventory.*;
+ import org.bukkit.inventory.ItemStack;
+-import org.bukkit.inventory.Merchant;
+-import org.bukkit.inventory.Inventory;
+-import org.bukkit.inventory.InventoryHolder;
+-import org.bukkit.inventory.Recipe;
+-import org.bukkit.inventory.ShapedRecipe;
+-import org.bukkit.inventory.ShapelessRecipe;
+ import org.bukkit.permissions.Permissible;
+ import org.bukkit.permissions.Permission;
+-import org.bukkit.plugin.Plugin;
+-import org.bukkit.plugin.PluginLoadOrder;
+-import org.bukkit.plugin.PluginManager;
+-import org.bukkit.plugin.ServicesManager;
+-import org.bukkit.plugin.SimplePluginManager;
+-import org.bukkit.plugin.SimpleServicesManager;
++import org.bukkit.plugin.*;
+ import org.bukkit.plugin.java.JavaPluginLoader;
+ import org.bukkit.plugin.messaging.Messenger;
++import org.bukkit.plugin.messaging.StandardMessenger;
+ import org.bukkit.potion.Potion;
+ import org.bukkit.potion.PotionEffectType;
+-import org.bukkit.plugin.messaging.StandardMessenger;
+ import org.bukkit.scheduler.BukkitWorker;
+ import org.bukkit.util.StringUtil;
+ import org.bukkit.util.permissions.DefaultPermissions;
+ import org.yaml.snakeyaml.Yaml;
+ import org.yaml.snakeyaml.constructor.SafeConstructor;
+ import org.yaml.snakeyaml.error.MarkedYAMLException;
+-import org.apache.commons.lang.Validate;
+-
+-import com.google.common.base.Charsets;
+-import com.google.common.base.Function;
+-import com.google.common.base.Preconditions;
+-import com.google.common.collect.ImmutableList;
+-import com.google.common.collect.Iterators;
+-import com.google.common.collect.Lists;
+-import com.google.common.collect.MapMaker;
+-import com.mojang.authlib.GameProfile;
+ 
+-import io.netty.buffer.ByteBuf;
+-import io.netty.buffer.ByteBufOutputStream;
+-import io.netty.buffer.Unpooled;
+-import io.netty.handler.codec.base64.Base64;
+-import org.apache.commons.lang.StringUtils;
+-import org.bukkit.NamespacedKey;
+-import org.bukkit.craftbukkit.util.CraftNamespacedKey;
+-import org.bukkit.event.server.TabCompleteEvent;
+-import net.md_5.bungee.api.chat.BaseComponent;
+-
+-import javax.annotation.Nullable; // Paper
+ import javax.annotation.Nonnull; // Paper
++import javax.annotation.Nullable; // Paper
++import javax.imageio.ImageIO;
++import java.awt.image.BufferedImage;
++import java.io.*;
++import java.util.*;
++import java.util.logging.Level;
++import java.util.logging.Logger;
+ 
+ 
+ public final class CraftServer implements Server {
+-    private final String serverName = "Dionysus";
++    private final String serverName = "Magnet";
+     private final String serverVersion;
+     private final String bukkitVersion = Versioning.getBukkitVersion();
+     private final Logger logger = Logger.getLogger("Minecraft");

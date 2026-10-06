@@ -1,0 +1,92 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Tue, 6 Oct 2026 21:14:33 +0800
+Subject: [PATCH] Magnet-POM-Change
+
+
+diff --git a/pom.xml b/pom.xml
+index 9c7f0d20b078459eaf0650adab102ca06bc904bd..2703ae8b5c84917e20811f48e72cc0d82dd6bc41 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1,12 +1,12 @@
+ <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+     <modelVersion>4.0.0</modelVersion>
+-    <groupId>dev.pomf.dionysus</groupId>
+-    <artifactId>dionysus</artifactId>
++    <groupId>org.mineblock</groupId>
++    <artifactId>magnet</artifactId>
+     <packaging>jar</packaging>
+     <version>1.12.2-R0.1-SNAPSHOT</version>
+-    <name>Dionysus</name>
+-    <url>https://github.com/nopjmp/Dionysus</url>
++    <name>Magnet</name>
++    <url>https://github.com/MineBlockMC/Magnet</url>
+ 
+     <properties>
+         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+@@ -24,8 +24,8 @@
+     </properties>
+ 
+     <parent>
+-        <groupId>dev.pomf.dionysus</groupId>
+-        <artifactId>dionysus-parent</artifactId>
++        <groupId>org.mineblock</groupId>
++        <artifactId>magnet-parent</artifactId>
+         <version>dev-SNAPSHOT</version>
+         <relativePath>../pom.xml</relativePath>
+     </parent>
+@@ -39,8 +39,8 @@
+             <scope>compile</scope>
+         </dependency>
+         <dependency>
+-            <groupId>dev.pomf.dionysus</groupId>
+-            <artifactId>dionysus-api</artifactId>
++            <groupId>org.mineblock</groupId>
++            <artifactId>magnet-api</artifactId>
+             <version>${project.version}</version>
+             <scope>compile</scope>
+         </dependency>
+@@ -223,7 +223,7 @@
+ 
+     <!-- This builds a completely 'ready to start' jar with all dependencies inside -->
+     <build>
+-        <finalName>dionysus-${minecraft.version}</finalName>
++        <finalName>magnet-${minecraft.version}</finalName>
+         <defaultGoal>install</defaultGoal> <!-- Paper -->
+         <plugins>
+             <plugin>
+@@ -231,7 +231,7 @@
+                 <artifactId>gitdescribe-maven-plugin</artifactId>
+                 <version>1.3</version>
+                 <configuration>
+-                    <outputPrefix>git-Dionysus-</outputPrefix>
++                    <outputPrefix>git-Magnet-</outputPrefix>
+                     <scmDirectory>..</scmDirectory>
+                 </configuration>
+                 <executions>
+diff --git a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
+index e6d3d4f9505442a80cf095fcdeaa65640b407262..07617eeca4dfe480b026e6d341052860250ff230 100644
+--- a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
++++ b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
+@@ -1,17 +1,18 @@
+ package org.bukkit.craftbukkit.util;
+ 
++import org.bukkit.Bukkit;
++
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.util.Properties;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+-import org.bukkit.Bukkit;
+ 
+ public final class Versioning {
+     public static String getBukkitVersion() {
+         String result = "Unknown-Version";
+ 
+-        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/dev.pomf.dionysus/dionysus-api/pom.properties"); // Dionysus
++        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/org.mineblock/magnet-api/pom.properties"); // Dionysus // Magnet
+         Properties properties = new Properties();
+ 
+         if (stream != null) {
