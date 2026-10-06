@@ -48,6 +48,17 @@ manifest.mf
 # Linux temp files
 *~
 
+# Magnet
+run/
+mc-dev/
+Magnet-API/
+Magnet-Server/
+last-dionysus
+magnetclip.jar
+*clip.jar
+mcdevimports.conf
+mcdevimports-*-dump.conf
+
 # other stuff
 run/
 docs/build/
