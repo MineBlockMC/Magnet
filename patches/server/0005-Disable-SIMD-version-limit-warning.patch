@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Wed, 7 Oct 2026 15:40:14 +0800
+Subject: [PATCH] Disable SIMD version limit warning
+
+
+diff --git a/src/main/java/dev/pomf/dionysus/DionysusConfig.java b/src/main/java/dev/pomf/dionysus/DionysusConfig.java
+index fdbfe87de4f1152adb8c571305dc6d969b41716c..1b24480f56ff26685a2742dd5a5785c8a5c67c41 100644
+--- a/src/main/java/dev/pomf/dionysus/DionysusConfig.java
++++ b/src/main/java/dev/pomf/dionysus/DionysusConfig.java
+@@ -104,7 +104,7 @@ public class DionysusConfig {
+         if (SIMDDetection.isEnabled) {
+             DionysusLogger.LOGGER.info("SIMD operations detected as functional. Will replace some operations with faster versions.");
+         } else if (SIMDDetection.versionLimited) {
+-            DionysusLogger.LOGGER.warning("Will not enable SIMD! These optimizations are only safely supported on Java 17 and Java 18.");
++            //DionysusLogger.LOGGER.warning("Will not enable SIMD! These optimizations are only safely supported on Java 17 and Java 18."); // Magnet
+         } else {
+             DionysusLogger.LOGGER.warning("SIMD operations are available for your server, but are not configured!");
+             DionysusLogger.LOGGER.warning("To enable additional optimizations, add \"--add-modules=jdk.incubator.vector\" to your startup flags, BEFORE the \"-jar\".");

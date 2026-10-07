@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Wed, 7 Oct 2026 14:47:29 +0800
+Subject: [PATCH] Disable version checker
+
+
+diff --git a/src/main/java/org/bukkit/command/defaults/VersionCommand.java b/src/main/java/org/bukkit/command/defaults/VersionCommand.java
+index 87fba0b9624820614f6a215e8f3cfa19faa3f40d..6f3b6348bb15cbbfbc9442f9508a686f2c41885a 100644
+--- a/src/main/java/org/bukkit/command/defaults/VersionCommand.java
++++ b/src/main/java/org/bukkit/command/defaults/VersionCommand.java
+@@ -31,7 +31,7 @@ public class VersionCommand extends BukkitCommand {
+         if (args.length == 0) {
+             sender.sendMessage("This server is running " + Bukkit.getName() + " version " + Bukkit.getVersion() + " (Implementing API version " + Bukkit.getBukkitVersion() + ")");
+             tellHistory(sender); // Paper
+-            sendVersion(sender); // Paper - We'll say when, thanks
++            //sendVersion(sender); // Paper - We'll say when, thanks // Magnet - Disable check new version for now
+         } else {
+             StringBuilder name = new StringBuilder();
+ 

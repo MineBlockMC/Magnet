@@ -20,3 +20,22 @@ tasks.withType<org.gradle.api.tasks.compile.JavaCompile> {
 tasks.withType<org.gradle.api.tasks.javadoc.Javadoc> {
     enabled = false
 }
+
+// Magnet - shade log4j ahead of org.spigotmc:minecraft-server, whose bundled legacy log4j would
+// otherwise win (Shadow keeps the first copy of a duplicate entry). Keep in sync with
+// <log4j2.version> in Magnet-Server/pom.xml.
+val pinnedLog4j = configurations.create("magnetPinnedLog4j") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
+dependencies {
+    add(pinnedLog4j.name, "org.apache.logging.log4j:log4j-core:2.26.1")
+    add(pinnedLog4j.name, "org.apache.logging.log4j:log4j-api:2.26.1")
+}
+
+tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
+    configurations = listOf(pinnedLog4j) + configurations
+}
+

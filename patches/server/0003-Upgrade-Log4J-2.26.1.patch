@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Wed, 7 Oct 2026 14:25:40 +0800
+Subject: [PATCH] Upgrade Log4J 2.26.1
+
+
+diff --git a/pom.xml b/pom.xml
+index 2703ae8b5c84917e20811f48e72cc0d82dd6bc41..6841c341a8c49a8882fd34800760367df8116f8d 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -20,7 +20,7 @@
+         <maven.compiler.source>17</maven.compiler.source>
+         <maven.compiler.target>17</maven.compiler.target>
+ 
+-        <log4j2.version>2.17.2</log4j2.version>
++        <log4j2.version>2.26.1</log4j2.version>
+     </properties>
+ 
+     <parent>
+diff --git a/src/main/resources/log4j2.xml b/src/main/resources/log4j2.xml
+index 2024f99bc838cd3261893a1c782c5d2c9553f283..ff8c7d0287f53a480c4530e0465146ca5272f5f1 100644
+--- a/src/main/resources/log4j2.xml
++++ b/src/main/resources/log4j2.xml
+@@ -3,21 +3,22 @@
+     <Appenders>
+         <TerminalConsole name="TerminalConsole">
+             <PatternLayout>
+-                <LoggerNamePatternSelector defaultPattern="%highlightError{[%d{HH:mm:ss} %level]: [%logger] %minecraftFormatting{%msg{nolookups}}%n%xEx}">
++                <!-- Magnet - log4j 2.26.1 dropped message lookups, so the obsolete {nolookups} option is gone. -->
++                <LoggerNamePatternSelector defaultPattern="%highlightError{[%d{HH:mm:ss} %level]: [%logger] %minecraftFormatting{%msg}%n%xEx}">
+                     <!-- Log root, Minecraft, Mojang and Bukkit loggers without prefix -->
+                     <!-- Disable prefix for various plugins that bypass the plugin logger -->
+                     <PatternMatch key=",net.minecraft.,Minecraft,com.mojang.,com.sk89q.,ru.tehkode.,Minecraft.AWE"
+-                                  pattern="%highlightError{[%d{HH:mm:ss} %level]: %minecraftFormatting{%msg{nolookups}}%n%xEx}" />
++                                  pattern="%highlightError{[%d{HH:mm:ss} %level]: %minecraftFormatting{%msg}%n%xEx}" />
+                 </LoggerNamePatternSelector>
+             </PatternLayout>
+         </TerminalConsole>
+         <RollingRandomAccessFile name="File" fileName="logs/latest.log" filePattern="logs/%d{yyyy-MM-dd}-%i.log.gz">
+             <PatternLayout>
+-                <LoggerNamePatternSelector defaultPattern="[%d{HH:mm:ss}] [%t/%level]: [%logger] %minecraftFormatting{%msg{nolookups}}{strip}%n">
++                <LoggerNamePatternSelector defaultPattern="[%d{HH:mm:ss}] [%t/%level]: [%logger] %minecraftFormatting{%msg}{strip}%n">
+                     <!-- Log root, Minecraft, Mojang and Bukkit loggers without prefix -->
+                     <!-- Disable prefix for various plugins that bypass the plugin logger -->
+                     <PatternMatch key=",net.minecraft.,Minecraft,com.mojang.,com.sk89q.,ru.tehkode.,Minecraft.AWE"
+-                                  pattern="[%d{HH:mm:ss}] [%t/%level]: %minecraftFormatting{%msg{nolookups}}{strip}%n" />
++                                  pattern="[%d{HH:mm:ss}] [%t/%level]: %minecraftFormatting{%msg}{strip}%n" />
+                 </LoggerNamePatternSelector>
+             </PatternLayout>
+             <Policies>

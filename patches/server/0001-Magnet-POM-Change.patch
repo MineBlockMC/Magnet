@@ -86,7 +86,7 @@ index e6d3d4f9505442a80cf095fcdeaa65640b407262..07617eeca4dfe480b026e6d341052860
          String result = "Unknown-Version";
  
 -        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/dev.pomf.dionysus/dionysus-api/pom.properties"); // Dionysus
-+        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/org.mineblock/magnet-api/pom.properties"); // Dionysus // Magnet
++        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/org.mineblock.magnet/magnet-api/pom.properties"); // Dionysus // Magnet
          Properties properties = new Properties();
  
          if (stream != null) {
