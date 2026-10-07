@@ -5,7 +5,7 @@ Subject: [PATCH] Upgrade Log4J 2.26.1
 
 
 diff --git a/pom.xml b/pom.xml
-index 2703ae8b5c84917e20811f48e72cc0d82dd6bc41..6841c341a8c49a8882fd34800760367df8116f8d 100644
+index a69bf1dc9a7363ca1412f3560c5e31bf84bfcd92..bbe9eae1e87fc6b3e0b34bf7b9e46c882480aa2b 100644
 --- a/pom.xml
 +++ b/pom.xml
 @@ -20,7 +20,7 @@

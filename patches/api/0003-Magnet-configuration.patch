@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Wed, 7 Oct 2026 17:47:32 +0800
+Subject: [PATCH] Magnet configuration
+
+
+diff --git a/src/main/java/co/aikar/timings/TimingsExport.java b/src/main/java/co/aikar/timings/TimingsExport.java
+index 8e9a3aa506c8099a6c5abe9d0adced424bd033be..d6d7c0dac201057afd0e20686011abd5e77d8558 100644
+--- a/src/main/java/co/aikar/timings/TimingsExport.java
++++ b/src/main/java/co/aikar/timings/TimingsExport.java
+@@ -204,7 +204,8 @@ class TimingsExport extends Thread {
+             pair("spigot", mapAsJSON(Bukkit.spigot().getSpigotConfig(), null)),
+             pair("bukkit", mapAsJSON(Bukkit.spigot().getBukkitConfig(), null)),
+             pair("paper", mapAsJSON(Bukkit.spigot().getPaperConfig(), null)),
+-            pair("dionysus", mapAsJSON(Bukkit.spigot().getDionysusConfig(), null)) // Dionysus
++            pair("dionysus", mapAsJSON(Bukkit.spigot().getDionysusConfig(), null)), // Dionysus
++            pair("magnet", mapAsJSON(Bukkit.spigot().getMagnetConfig(), null)) // Magnet
+         ));
+ 
+         new TimingsExport(listeners, parent, history).start();
+diff --git a/src/main/java/org/bukkit/Server.java b/src/main/java/org/bukkit/Server.java
+index fc294a94d9c33bc256fdaee1d3a91eeeeaedc6a6..195f4d9da87d42de3e15c94ebf233e18a69240a6 100644
+--- a/src/main/java/org/bukkit/Server.java
++++ b/src/main/java/org/bukkit/Server.java
+@@ -1021,6 +1021,12 @@ public interface Server extends PluginMessageRecipient {
+             throw new UnsupportedOperationException("Not supported yet.");
+         }
+ 
++        // Magnet
++        public org.bukkit.configuration.file.YamlConfiguration getMagnetConfig()
++        {
++            throw new UnsupportedOperationException("Not supported yet.");
++        }
++
+         /**
+          * Sends the component to the player
+          *

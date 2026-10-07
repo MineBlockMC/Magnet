@@ -5,7 +5,7 @@ Subject: [PATCH] Magnet-POM-Change
 
 
 diff --git a/pom.xml b/pom.xml
-index d810788c14008791ff8b0c08c09c2ba83d6df669..216e712b96812745d03d8b1c4b41f2c98d100444 100644
+index d810788c14008791ff8b0c08c09c2ba83d6df669..e2aeab4803c533915100aabc31a4e3ba03527052 100644
 --- a/pom.xml
 +++ b/pom.xml
 @@ -4,19 +4,19 @@

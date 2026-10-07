@@ -1,0 +1,17 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Wed, 7 Oct 2026 16:50:35 +0800
+Subject: [PATCH] Ignore dev server output file
+
+
+diff --git a/.gitignore b/.gitignore
+index 73c16b1d532c2e8d82a47db3ef47a2e44aa4bd8d..05a090f478844e02f91c60801893b77d345e1390 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -36,3 +36,5 @@ dependency-reduced-pom.xml
+ 
+ /src/main/resources/achievement
+ /src/main/resources/lang
++
++logs/
+\ No newline at end of file

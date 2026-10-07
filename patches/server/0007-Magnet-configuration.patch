@@ -1,0 +1,57 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Wed, 7 Oct 2026 17:47:31 +0800
+Subject: [PATCH] Magnet configuration
+
+
+diff --git a/src/main/java/net/minecraft/server/DedicatedServer.java b/src/main/java/net/minecraft/server/DedicatedServer.java
+index 0fed3a53188afabda87765a303dd7be4b0428cdd..2a41332bab42a5f338a61f177f0b48301b3f83e1 100644
+--- a/src/main/java/net/minecraft/server/DedicatedServer.java
++++ b/src/main/java/net/minecraft/server/DedicatedServer.java
+@@ -205,6 +205,10 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
+             dev.pomf.dionysus.DionysusConfig.load();
+             dev.pomf.dionysus.DionysusCommand.init();
+             // Dionysus end
++            // Magnet start
++            org.mineblock.magnet.MagnetConfig.load();
++            org.mineblock.magnet.MagnetCommand.init();
++            // Magnet end
+ 
+             DedicatedServer.LOGGER.info("Generating keypair");
+             this.a(MinecraftEncryption.b());
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index a00f43fef5330e8a851878d81c8686341d3333f1..1c901b1ae7b09fa9123b9def64af7672b14916fe 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -1945,6 +1945,12 @@ public final class CraftServer implements Server {
+             return dev.pomf.dionysus.DionysusConfig.getConfigCopy();
+         }
+ 
++        @Override
++        public YamlConfiguration getMagnetConfig()
++        {
++            return org.mineblock.magnet.MagnetConfig.getConfigCopy();
++        }
++
+         @Override
+         public void restart() {
+             org.spigotmc.RestartCommand.restart();
+diff --git a/src/main/java/org/bukkit/craftbukkit/Main.java b/src/main/java/org/bukkit/craftbukkit/Main.java
+index 21b2c51bba1b7ab1f2fd8126ebc9cd4faccb90b0..c7551a482d59ebd006b4af5fbe574f386e55e023 100644
+--- a/src/main/java/org/bukkit/craftbukkit/Main.java
++++ b/src/main/java/org/bukkit/craftbukkit/Main.java
+@@ -151,6 +151,14 @@ public class Main {
+                         .defaultsTo(new File("dionysus.yml"))
+                         .describedAs("Yml file");
+                 // Dionysus end
++
++                // Magnet Start
++                acceptsAll(asList("magnet", "magnet-settings"), "File for magnet settings")
++                        .withRequiredArg()
++                        .ofType(File.class)
++                        .defaultsTo(new File("magnet.yml"))
++                        .describedAs("Yml file");
++                // Magnet end
+             }
+         };
+ 

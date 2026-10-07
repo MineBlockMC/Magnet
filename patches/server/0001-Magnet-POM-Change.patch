@@ -5,7 +5,7 @@ Subject: [PATCH] Magnet-POM-Change
 
 
 diff --git a/pom.xml b/pom.xml
-index 9c7f0d20b078459eaf0650adab102ca06bc904bd..2703ae8b5c84917e20811f48e72cc0d82dd6bc41 100644
+index 9c7f0d20b078459eaf0650adab102ca06bc904bd..a69bf1dc9a7363ca1412f3560c5e31bf84bfcd92 100644
 --- a/pom.xml
 +++ b/pom.xml
 @@ -1,12 +1,12 @@
@@ -66,7 +66,7 @@ index 9c7f0d20b078459eaf0650adab102ca06bc904bd..2703ae8b5c84917e20811f48e72cc0d8
                  </configuration>
                  <executions>
 diff --git a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
-index e6d3d4f9505442a80cf095fcdeaa65640b407262..07617eeca4dfe480b026e6d341052860250ff230 100644
+index e6d3d4f9505442a80cf095fcdeaa65640b407262..a5dc627908ca18ed68a9c7ff2ea8ae276e2aa685 100644
 --- a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
 +++ b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
 @@ -1,17 +1,18 @@
