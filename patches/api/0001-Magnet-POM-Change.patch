@@ -14,14 +14,14 @@ index d810788c14008791ff8b0c08c09c2ba83d6df669..216e712b96812745d03d8b1c4b41f2c9
      <parent>
 -        <groupId>dev.pomf.dionysus</groupId>
 -        <artifactId>dionysus-parent</artifactId>
-+        <groupId>org.mineblock</groupId>
++        <groupId>org.mineblock.magnet</groupId>
 +        <artifactId>magnet-parent</artifactId>
          <version>dev-SNAPSHOT</version>
      </parent>
  
 -    <groupId>dev.pomf.dionysus</groupId>
 -    <artifactId>dionysus-api</artifactId>
-+    <groupId>org.mineblock</groupId>
++    <groupId>org.mineblock.magnet</groupId>
 +    <artifactId>magnet-api</artifactId>
      <version>1.12.2-R0.1-SNAPSHOT</version>
      <packaging>jar</packaging>

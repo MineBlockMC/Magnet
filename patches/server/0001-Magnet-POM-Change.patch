@@ -14,7 +14,7 @@ index 9c7f0d20b078459eaf0650adab102ca06bc904bd..2703ae8b5c84917e20811f48e72cc0d8
      <modelVersion>4.0.0</modelVersion>
 -    <groupId>dev.pomf.dionysus</groupId>
 -    <artifactId>dionysus</artifactId>
-+    <groupId>org.mineblock</groupId>
++    <groupId>org.mineblock.magnet</groupId>
 +    <artifactId>magnet</artifactId>
      <packaging>jar</packaging>
      <version>1.12.2-R0.1-SNAPSHOT</version>
@@ -31,7 +31,7 @@ index 9c7f0d20b078459eaf0650adab102ca06bc904bd..2703ae8b5c84917e20811f48e72cc0d8
      <parent>
 -        <groupId>dev.pomf.dionysus</groupId>
 -        <artifactId>dionysus-parent</artifactId>
-+        <groupId>org.mineblock</groupId>
++        <groupId>org.mineblock.magnet</groupId>
 +        <artifactId>magnet-parent</artifactId>
          <version>dev-SNAPSHOT</version>
          <relativePath>../pom.xml</relativePath>
@@ -42,7 +42,7 @@ index 9c7f0d20b078459eaf0650adab102ca06bc904bd..2703ae8b5c84917e20811f48e72cc0d8
          <dependency>
 -            <groupId>dev.pomf.dionysus</groupId>
 -            <artifactId>dionysus-api</artifactId>
-+            <groupId>org.mineblock</groupId>
++            <groupId>org.mineblock.magnet</groupId>
 +            <artifactId>magnet-api</artifactId>
              <version>${project.version}</version>
              <scope>compile</scope>
