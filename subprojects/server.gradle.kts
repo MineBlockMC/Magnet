@@ -4,10 +4,37 @@ import java.io.File
 // upstream build installs into the local Maven repository (Paper/scripts/remap.sh).
 // Toothpick only whitelists io.papermc:minecraft-server for mavenLocal, so add an
 // explicit, unfiltered local repository here.
+//
+// Resolve the local repository the same way Maven does: -Dmaven.repo.local, then
+// <localRepository> in the user/global settings.xml, then ~/.m2/repository.
+fun magnetLocalMavenRepo(): File {
+    System.getProperty("maven.repo.local")?.let { return File(it) }
+    System.getenv("MAVEN_OPTS")?.split(" ")?.firstOrNull { it.startsWith("-Dmaven.repo.local=") }
+        ?.substringAfter("=")?.let { return File(it) }
+    val userSettings = File(System.getProperty("user.home"), ".m2/settings.xml")
+    val mavenHome = System.getenv("M2_HOME") ?: System.getenv("MAVEN_HOME")
+    val globalSettings = mavenHome?.let { File(it, "conf/settings.xml") }
+    for (settings in listOfNotNull(userSettings.takeIf { it.isFile }, globalSettings?.takeIf { it.isFile })) {
+        try {
+            val value = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(settings)
+                .getElementsByTagName("localRepository")
+            if (value.length > 0) {
+                val text = value.item(0).textContent?.trim().orEmpty()
+                if (text.isNotEmpty()) return File(text)
+            }
+        } catch (_: Exception) {
+            // Ignore malformed settings files and fall through to the default location.
+        }
+    }
+    return File(System.getProperty("user.home"), ".m2/repository")
+}
+
 repositories {
     maven {
         name = "MagnetLocalMaven"
-        url = uri(File(System.getProperty("user.home"), ".m2/repository"))
+        url = uri(magnetLocalMavenRepo())
     }
 }
 
