@@ -1,0 +1,458 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Fri, 16 Oct 2026 14:50:10 +0800
+Subject: [PATCH] Velocity modern forward
+
+
+diff --git a/src/main/java/net/minecraft/server/LoginListener.java b/src/main/java/net/minecraft/server/LoginListener.java
+index 30a2097975868ff80232cd0c32d7d55b0c374aa1..ef74f2639131474515112e715e4e36a05dc47dc0 100644
+--- a/src/main/java/net/minecraft/server/LoginListener.java
++++ b/src/main/java/net/minecraft/server/LoginListener.java
+@@ -47,6 +47,7 @@ public class LoginListener implements PacketLoginInListener, ITickable {
+     private SecretKey loginKey;
+     private EntityPlayer l;
+     public String hostname = ""; // CraftBukkit - add field
++    public int velocityLoginMessageId = -1; // Magnet - Velocity modern forwarding
+ 
+     public LoginListener(MinecraftServer minecraftserver, NetworkManager networkmanager) {
+         this.g = LoginListener.EnumProtocolState.HELLO;
+@@ -205,6 +206,15 @@ public class LoginListener implements PacketLoginInListener, ITickable {
+             this.g = LoginListener.EnumProtocolState.KEY;
+             this.networkManager.sendPacket(new PacketLoginOutEncryptionBegin("", this.server.O().getPublic(), this.e));
+         } else {
++            // Magnet start - Velocity modern forwarding
++            // Velocity connects to the backend with the client's protocol version and authenticates the player,
++            // so we ask it for the real player details instead of starting the offline login path.
++            if (org.mineblock.magnet.MagnetConfig.velocitySupportEnabled) {
++                this.velocityLoginMessageId = java.util.concurrent.ThreadLocalRandom.current().nextInt();
++                org.mineblock.magnet.proxy.VelocityProxy.sendLoginPluginRequest(this.networkManager, this.velocityLoginMessageId);
++                return;
++            }
++            // Magnet end
+             // Spigot start
+             // Paper start - Cache authenticator threads
+             authenticatorPool.execute(new Runnable() {
+@@ -225,6 +235,34 @@ public class LoginListener implements PacketLoginInListener, ITickable {
+ 
+     }
+ 
++    // Magnet start - Velocity modern forwarding
++    /**
++     * Applies the player details forwarded by Velocity and continues the login. The forwarded data is
++     * authoritative, so the offline login path is used without contacting Mojang.
++     */
++    public void handleVelocityForwarding(java.net.InetSocketAddress clientAddress, GameProfile profile) {
++        this.networkManager.l = clientAddress;
++        this.networkManager.spoofedUUID = profile.getId();
++        this.networkManager.spoofedProfile = profile.getProperties().values().toArray(new com.mojang.authlib.properties.Property[0]);
++        this.i = new GameProfile((UUID) null, profile.getName());
++
++        // Spigot start - same hand off as the offline login path, initUUID() picks up the spoofed data
++        authenticatorPool.execute(new Runnable() {
++            @Override
++            public void run() {
++                try {
++                    initUUID();
++                    new LoginHandler().fireEvents();
++                } catch (Exception ex) {
++                    disconnect("Failed to verify username!");
++                    server.server.getLogger().log(java.util.logging.Level.WARNING, "Exception verifying " + i.getName(), ex);
++                }
++            }
++        });
++        // Spigot end
++    }
++    // Magnet end
++
+     public void a(PacketLoginInEncryptionBegin packetlogininencryptionbegin) {
+         Validate.validState(this.g == LoginListener.EnumProtocolState.KEY, "Unexpected key packet", new Object[0]);
+         PrivateKey privatekey = this.server.O().getPrivate();
+diff --git a/src/main/java/net/minecraft/server/ServerConnection.java b/src/main/java/net/minecraft/server/ServerConnection.java
+index 098c51675e8b0a0543676797d1abc4b6769c30d7..69e51c0b278e3dbbfcfce79bf50fa27a1eb5500e 100644
+--- a/src/main/java/net/minecraft/server/ServerConnection.java
++++ b/src/main/java/net/minecraft/server/ServerConnection.java
+@@ -148,8 +148,14 @@ public class ServerConnection {
+                         ;
+                     }
+                     if (!disableFlushConsolidation) channel.pipeline().addFirst(new FlushConsolidationHandler()); // Paper
++                    NetworkManager networkmanager = new NetworkManager(EnumProtocolDirection.SERVERBOUND); // Magnet - created earlier so the Velocity interceptor can reference it
+                     channel.pipeline().addLast("timeout", new ReadTimeoutHandler(30)).addLast("legacy_query", new LegacyPingHandler(ServerConnection.this)).addLast("splitter", new PacketSplitter()).addLast("decoder", new PacketDecoder(EnumProtocolDirection.SERVERBOUND)).addLast("prepender", new PacketPrepender()).addLast("encoder", new PacketEncoder(EnumProtocolDirection.CLIENTBOUND));
+-                    NetworkManager networkmanager = new NetworkManager(EnumProtocolDirection.SERVERBOUND);
++                    // Magnet start - Velocity modern forwarding. Added before ViaVersion injects its handlers, so this
++                    // ends up in front of via-decoder and can consume the login plugin message answer before it is cancelled.
++                    if (org.mineblock.magnet.MagnetConfig.velocitySupportEnabled) {
++                        channel.pipeline().addBefore("decoder", org.mineblock.magnet.proxy.VelocityForwardingHandler.HANDLER_NAME, new org.mineblock.magnet.proxy.VelocityForwardingHandler(networkmanager));
++                    }
++                    // Magnet end
+ 
+                     pending.add(networkmanager); // Paper
+                     channel.pipeline().addLast("packet_handler", networkmanager);
+diff --git a/src/main/java/org/mineblock/magnet/MagnetConfig.java b/src/main/java/org/mineblock/magnet/MagnetConfig.java
+index c796170aefea0533c90d55fb82ab8553203dc110..92ad6fb35bf0c0d9b2693ef2e52b1f7d59044f15 100644
+--- a/src/main/java/org/mineblock/magnet/MagnetConfig.java
++++ b/src/main/java/org/mineblock/magnet/MagnetConfig.java
+@@ -10,6 +10,8 @@ import java.io.File;
+ import java.io.IOException;
+ import java.lang.reflect.Method;
+ import java.lang.reflect.Modifier;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
+ import java.util.List;
+ 
+ public class MagnetConfig {
+@@ -106,4 +108,71 @@ public class MagnetConfig {
+         ensureDefault(key, defaultValue, comment);
+         return config.getStringList(key);
+     }
++
++    public static boolean velocitySupportEnabled = false;
++    public static boolean velocitySupportOnlineMode = false;
++    /** Resolved forwarding secret: {@code settings.velocity-support.secret}, or the contents of the forwarding secret file. */
++    public static String velocitySecret = "";
++    private static String velocitySupportSecret = "";
++    private static String velocityForwardingSecretFile = "forwarding.secret";
++
++    private static void velocitySupport() {
++        velocitySupportEnabled = getBoolean("settings.velocity-support.enabled", velocitySupportEnabled, """
++                Whether to enable Velocity's modern player info forwarding.
++                EXPERIMENTAL - this is a backport of the protocol Paper added in 1.13. Requirements:
++                  - Velocity must use player-info-forwarding-mode = "modern" with the same secret.
++                  - This server MUST run with online-mode=false (Velocity authenticates players).
++                  - This server MUST have ViaVersion installed, or clients newer than 1.12.2 cannot connect.
++                  - Restrict this server's port to your proxy (firewall); the secret is the only authentication.""");
++
++        velocitySupportOnlineMode = getBoolean("settings.velocity-support.online-mode", velocitySupportOnlineMode, """
++                Whether Velocity performs Mojang authentication for players.
++                Set this to true when your proxy runs with online-mode=true (recommended).""");
++
++        velocitySupportSecret = getString("settings.velocity-support.secret", velocitySupportSecret, """
++                The forwarding secret. Must match forwarding.secret on your Velocity proxy.
++                Leave this empty to read the secret from settings.velocity-support.forwarding-secret-file instead.""");
++
++        velocityForwardingSecretFile = getString("settings.velocity-support.forwarding-secret-file", velocityForwardingSecretFile, """
++                File to read the forwarding secret from when settings.velocity-support.secret is empty.""");
++
++        velocitySecret = resolveSecret(velocitySupportSecret, velocityForwardingSecretFile);
++
++        setComment("settings.velocity-support", "Velocity modern player info forwarding (EXPERIMENTAL).");
++
++        if (velocitySupportEnabled) {
++            Bukkit.getLogger().warning("[Magnet] Velocity modern forwarding (experimental) is enabled. Make sure Velocity uses"
++                    + " player-info-forwarding-mode \"modern\" with a matching secret, that this server runs online-mode=false"
++                    + " and that ViaVersion is installed.");
++
++            if (velocitySecret.isEmpty()) {
++                logError("[Magnet] settings.velocity-support.enabled is true, but no forwarding secret was found."
++                        + " Set settings.velocity-support.secret or settings.velocity-support.forwarding-secret-file,"
++                        + " otherwise every login will be rejected.");
++            }
++
++            if (MinecraftServer.getServer().getOnlineMode()) {
++                Bukkit.getLogger().warning("[Magnet] Velocity modern forwarding will NOT be used because this server is running"
++                        + " with online-mode=true. Set online-mode=false in server.properties.");
++            }
++        }
++    }
++
++    private static String resolveSecret(String secret, String secretFile) {
++        if (secret != null && !secret.isEmpty()) {
++            return secret;
++        }
++
++        final File file = new File(secretFile);
++        if (!file.isFile()) {
++            return "";
++        }
++
++        try {
++            return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8).trim();
++        } catch (IOException e) {
++            logError("[Magnet] Failed to read the Velocity forwarding secret from " + file.getAbsolutePath() + ": " + e.getMessage());
++            return "";
++        }
++    }
+ }
+diff --git a/src/main/java/org/mineblock/magnet/proxy/VelocityForwardingHandler.java b/src/main/java/org/mineblock/magnet/proxy/VelocityForwardingHandler.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..cdf3b4a5c16afdde7aacc9e04e9cf11a79e93e22
+--- /dev/null
++++ b/src/main/java/org/mineblock/magnet/proxy/VelocityForwardingHandler.java
+@@ -0,0 +1,108 @@
++package org.mineblock.magnet.proxy;
++
++import com.mojang.authlib.GameProfile;
++import io.netty.buffer.ByteBuf;
++import io.netty.channel.ChannelHandlerContext;
++import io.netty.channel.ChannelInboundHandlerAdapter;
++import io.netty.util.ReferenceCountUtil;
++import net.minecraft.server.LoginListener;
++import net.minecraft.server.NetworkManager;
++import net.minecraft.server.PacketListener;
++
++import java.net.InetAddress;
++import java.net.InetSocketAddress;
++import java.net.SocketAddress;
++
++/**
++ * Magnet - Velocity modern forwarding support.
++ * <p>
++ * Sits in the Netty pipeline right before the {@code decoder} (and therefore, because ViaVersion
++ * injects its own handlers later, right before {@code via-decoder}). It consumes the login plugin
++ * message answer that Velocity sends back, so ViaVersion never gets a chance to cancel it - which
++ * is exactly what would otherwise happen, since a 1.12.2 server has no packet to translate
++ * {@code ServerboundLoginPackets.CUSTOM_QUERY_ANSWER} onto.
++ * <p>
++ * Everything else is passed through untouched.
++ */
++public class VelocityForwardingHandler extends ChannelInboundHandlerAdapter {
++
++    public static final String HANDLER_NAME = "magnet_velocity";
++    /** Packet id of the serverbound login plugin message in the LOGIN state (1.13+). */
++    private static final int LOGIN_PLUGIN_RESPONSE_PACKET_ID = 0x02;
++
++    private final NetworkManager networkManager;
++
++    public VelocityForwardingHandler(NetworkManager networkManager) {
++        this.networkManager = networkManager;
++    }
++
++    @Override
++    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
++        if (!(msg instanceof ByteBuf)) {
++            super.channelRead(ctx, msg);
++            return;
++        }
++
++        final PacketListener packetListener = this.networkManager.i();
++        if (!(packetListener instanceof LoginListener)) {
++            super.channelRead(ctx, msg);
++            return;
++        }
++
++        final LoginListener loginListener = (LoginListener) packetListener;
++        final int expectedMessageId = loginListener.velocityLoginMessageId;
++        if (expectedMessageId == -1) {
++            super.channelRead(ctx, msg);
++            return;
++        }
++
++        final ByteBuf buf = (ByteBuf) msg;
++        final ByteBuf peek = buf.duplicate();
++        if (peek.readableBytes() < 1 || VelocityProxy.readVarInt(peek) != LOGIN_PLUGIN_RESPONSE_PACKET_ID) {
++            super.channelRead(ctx, msg);
++            return;
++        }
++
++        consume(ctx, buf);
++
++        try {
++            VelocityProxy.readVarInt(buf); // packet id
++            final int messageId = VelocityProxy.readVarInt(buf);
++            final boolean success = buf.readBoolean();
++
++            if (messageId != expectedMessageId || !success) {
++                loginListener.disconnect("This server requires you to connect with Velocity.");
++                return;
++            }
++
++            if (!VelocityProxy.checkIntegrity(buf)) {
++                loginListener.disconnect("Unable to verify player details");
++                return;
++            }
++
++            final int version = VelocityProxy.readVarInt(buf);
++            if (version > VelocityProxy.SUPPORTED_FORWARDING_VERSION) {
++                loginListener.disconnect("Unsupported Velocity forwarding version " + version);
++                return;
++            }
++
++            final InetAddress address = VelocityProxy.readAddress(buf);
++            final GameProfile profile = VelocityProxy.createProfile(buf);
++
++            final SocketAddress listening = this.networkManager.getSocketAddress();
++            final int port = listening instanceof InetSocketAddress ? ((InetSocketAddress) listening).getPort() : 0;
++
++            loginListener.handleVelocityForwarding(new InetSocketAddress(address, port), profile);
++        } catch (Exception ex) {
++            loginListener.disconnect("Unable to verify player details");
++        }
++    }
++
++    /** Drops the packet from the pipeline (never fires it) and removes this handler again. */
++    private void consume(ChannelHandlerContext ctx, ByteBuf buf) {
++        ReferenceCountUtil.release(buf);
++        if (ctx.pipeline().context(this) != null) {
++            ctx.pipeline().remove(this);
++        }
++    }
++}
+diff --git a/src/main/java/org/mineblock/magnet/proxy/VelocityProxy.java b/src/main/java/org/mineblock/magnet/proxy/VelocityProxy.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..ad184e27b948a45b80cd608f0ee043249bf55871
+--- /dev/null
++++ b/src/main/java/org/mineblock/magnet/proxy/VelocityProxy.java
+@@ -0,0 +1,164 @@
++package org.mineblock.magnet.proxy;
++
++import com.google.common.net.InetAddresses;
++import com.mojang.authlib.GameProfile;
++import com.mojang.authlib.properties.Property;
++import com.mojang.authlib.properties.PropertyMap;
++import io.netty.buffer.ByteBuf;
++import io.netty.buffer.Unpooled;
++import net.minecraft.server.NetworkManager;
++import org.mineblock.magnet.MagnetConfig;
++
++import javax.crypto.Mac;
++import javax.crypto.spec.SecretKeySpec;
++import java.net.InetAddress;
++import java.nio.charset.StandardCharsets;
++import java.security.InvalidKeyException;
++import java.security.MessageDigest;
++import java.security.NoSuchAlgorithmException;
++import java.util.UUID;
++
++/**
++ * Backport of Paper's Velocity modern player info forwarding (added in 1.13) to 1.12.2.
++ * <p>
++ * Velocity's modern forwarding uses the 1.13 login plugin message packets, which do not exist in
++ * the 1.12.2 protocol. This implementation talks to the proxy with hand-built packets, and
++ * {@link VelocityForwardingHandler} consumes the answer before ViaVersion can cancel it.
++ * <p>
++ * The forwarding payload is {@code [32 byte HMAC-SHA256 signature][VarInt version]
++ * [String address][UUID][String name][properties]}.
++ */
++public class VelocityProxy {
++
++    /** Login plugin message channel Velocity answers on. */
++    public static final String CHANNEL = "velocity:player_info";
++    /** The only forwarding data version this server understands. */
++    public static final int SUPPORTED_FORWARDING_VERSION = 1;
++    /** Packet id of the clientbound login plugin message in the LOGIN state (1.13+). */
++    private static final int LOGIN_PLUGIN_REQUEST_PACKET_ID = 0x04;
++
++    /**
++     * Asks the proxy for the player's real details.
++     * <p>
++     * The packet is framed by hand and written straight into the pipeline from the interceptor's
++     * context. That skips the vanilla encoder (the packet id is not registered in the 1.12.2
++     * {@code EnumProtocol}) as well as ViaVersion's encoder, which would otherwise be handed a
++     * packet it cannot translate.
++     */
++    public static void sendLoginPluginRequest(NetworkManager networkManager, int messageId) {
++        final io.netty.channel.ChannelHandlerContext ctx =
++                networkManager.channel.pipeline().context(VelocityForwardingHandler.HANDLER_NAME);
++        if (ctx == null) {
++            MagnetConfig.logError("[Magnet] Unable to send the Velocity login plugin request: the interceptor is not in the pipeline.");
++            return;
++        }
++
++        final ByteBuf packet = Unpooled.buffer();
++        final ByteBuf frame = Unpooled.buffer();
++        try {
++            writeVarInt(packet, LOGIN_PLUGIN_REQUEST_PACKET_ID);
++            writeVarInt(packet, messageId);
++            writeString(packet, CHANNEL);
++            packet.writeByte(SUPPORTED_FORWARDING_VERSION);
++
++            writeVarInt(frame, packet.readableBytes());
++            frame.writeBytes(packet);
++
++            ctx.writeAndFlush(frame.retain());
++        } finally {
++            packet.release();
++            frame.release();
++        }
++    }
++
++    /**
++     * Verifies the HMAC-SHA256 signature at the start of {@code buf} and advances the reader index
++     * past it, leaving the forwarded data in the buffer.
++     */
++    public static boolean checkIntegrity(ByteBuf buf) {
++        final String secret = MagnetConfig.velocitySecret;
++        if (secret == null || secret.isEmpty() || buf.readableBytes() < 32) {
++            return false;
++        }
++
++        final byte[] signature = new byte[32];
++        buf.readBytes(signature);
++
++        final byte[] data = new byte[buf.readableBytes()];
++        buf.getBytes(buf.readerIndex(), data);
++
++        try {
++            final Mac mac = Mac.getInstance("HmacSHA256");
++            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
++            return MessageDigest.isEqual(signature, mac.doFinal(data));
++        } catch (final InvalidKeyException | NoSuchAlgorithmException e) {
++            throw new AssertionError(e);
++        }
++    }
++
++    public static InetAddress readAddress(ByteBuf buf) {
++        return InetAddresses.forString(readString(buf));
++    }
++
++    public static GameProfile createProfile(ByteBuf buf) {
++        final GameProfile profile = new GameProfile(readUuid(buf), readString(buf));
++        profile.getProperties().putAll(readProperties(buf));
++        return profile;
++    }
++
++    private static PropertyMap readProperties(ByteBuf buf) {
++        final PropertyMap properties = new PropertyMap();
++        final int count = readVarInt(buf);
++        for (int i = 0; i < count; i++) {
++            final String name = readString(buf);
++            final String value = readString(buf);
++            final String signature = buf.readBoolean() ? readString(buf) : null;
++            properties.put(name, new Property(name, value, signature));
++        }
++        return properties;
++    }
++
++    static int readVarInt(ByteBuf buf) {
++        int value = 0;
++        int position = 0;
++        byte current;
++        do {
++            current = buf.readByte();
++            value |= (current & 0x7F) << position;
++            position += 7;
++            if (position > 35) {
++                throw new IllegalArgumentException("VarInt is too big");
++            }
++        } while ((current & 0x80) != 0);
++        return value;
++    }
++
++    private static void writeVarInt(ByteBuf buf, int value) {
++        while ((value & ~0x7F) != 0) {
++            buf.writeByte(value & 0x7F | 0x80);
++            value >>>= 7;
++        }
++        buf.writeByte(value);
++    }
++
++    private static String readString(ByteBuf buf) {
++        final int length = readVarInt(buf);
++        if (length < 0 || length > buf.readableBytes()) {
++            throw new IllegalArgumentException("Bad string length " + length);
++        }
++
++        final String value = buf.toString(buf.readerIndex(), length, StandardCharsets.UTF_8);
++        buf.skipBytes(length);
++        return value;
++    }
++
++    private static void writeString(ByteBuf buf, String value) {
++        final byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
++        writeVarInt(buf, bytes.length);
++        buf.writeBytes(bytes);
++    }
++
++    private static UUID readUuid(ByteBuf buf) {
++        return new UUID(buf.readLong(), buf.readLong());
++    }
++}
