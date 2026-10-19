@@ -53,14 +53,35 @@ val pinnedLog4j = configurations.create("magnetPinnedLog4j") {
     isTransitive = false
 }
 
+// Magnet - Adventure 5 / Gson 2.13.2 必须优先于 minecraft-server 自带的旧版本。
+val pinnedAdventure = configurations.create("magnetPinnedAdventure") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = true
+}
+
 dependencies {
     add(pinnedLog4j.name, "org.apache.logging.log4j:log4j-core:2.26.1")
     add(pinnedLog4j.name, "org.apache.logging.log4j:log4j-api:2.26.1")
+
+    add(pinnedAdventure.name, "net.kyori:adventure-api:5.2.0")
+    add(pinnedAdventure.name, "net.kyori:adventure-text-minimessage:5.2.0")
+    add(pinnedAdventure.name, "net.kyori:adventure-text-serializer-gson:5.2.0")
+    add(pinnedAdventure.name, "net.kyori:adventure-text-serializer-legacy:5.2.0")
+    add(pinnedAdventure.name, "net.kyori:adventure-text-serializer-plain:5.2.0")
+    add(pinnedAdventure.name, "net.kyori:adventure-text-serializer-ansi:5.2.0")
+    add(pinnedAdventure.name, "com.google.code.gson:gson:2.13.2")
 }
 
 tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
-    // Magnet - Shadow 9 exposes `configurations` as a SetProperty; runtimeClasspath is still the
-    // default entry, but the pinned log4j must stay first so it wins duplicate-entry resolution.
-    configurations.set(listOf(pinnedLog4j, project.configurations.getByName("runtimeClasspath")))
+    // Magnet - Shadow 9 exposes `configurations` as a SetProperty; keep pinned dependencies
+    // before runtimeClasspath so they win duplicate-entry resolution.
+    configurations.set(
+        listOf(
+            pinnedLog4j,
+            pinnedAdventure,
+            project.configurations.getByName("runtimeClasspath")
+        )
+    )
 }
 

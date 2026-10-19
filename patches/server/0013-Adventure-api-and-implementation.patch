@@ -1,0 +1,254 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Mon, 19 Oct 2026 15:59:32 +0800
+Subject: [PATCH] Adventure api and implementation
+
+
+diff --git a/pom.xml b/pom.xml
+index ba26da06dc550a4a62c0e529f69d3548c59e1ea7..ee486075e97bf223f6b9b20cb9428dfae88274b0 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -150,10 +150,11 @@
+             <version>2.2</version>
+             <scope>test</scope>
+         </dependency>
++        <!-- Magnet - 与 Adventure 5.2.0 的传递依赖对齐 -->
+         <dependency>
+             <groupId>org.jetbrains</groupId>
+             <artifactId>annotations</artifactId>
+-            <version>23.0.0</version>
++            <version>26.1.0</version>
+             <scope>compile</scope>
+         </dependency>
+         <dependency>
+diff --git a/src/main/java/net/minecraft/server/PacketPlayOutPlayerListHeaderFooter.java b/src/main/java/net/minecraft/server/PacketPlayOutPlayerListHeaderFooter.java
+index f5ef1ba31abc822458e5be9ea8f25c3d8d393df3..b4e497c7380aa1b33f85d05126b20fa843d8d148 100644
+--- a/src/main/java/net/minecraft/server/PacketPlayOutPlayerListHeaderFooter.java
++++ b/src/main/java/net/minecraft/server/PacketPlayOutPlayerListHeaderFooter.java
+@@ -11,6 +11,13 @@ public class PacketPlayOutPlayerListHeaderFooter implements Packet<PacketListene
+ 
+     public PacketPlayOutPlayerListHeaderFooter() {}
+ 
++    // Magnet start - Adventure 组件
++    public PacketPlayOutPlayerListHeaderFooter(IChatBaseComponent header, IChatBaseComponent footer) {
++        this.a = header;
++        this.b = footer;
++    }
++    // Magnet end
++
+     public void a(PacketDataSerializer packetdataserializer) throws IOException {
+         this.a = packetdataserializer.f();
+         this.b = packetdataserializer.f();
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 955a9d3b8b99b4ced19fe9aa602a97a6d7c940b8..02b7c90db111b9fb0363f48b0e9242cf7d2b35fb 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -114,6 +114,11 @@ import org.bukkit.plugin.messaging.StandardMessenger;
+ import org.bukkit.scheduler.BukkitWorker;
+ import org.bukkit.util.StringUtil;
+ import org.bukkit.util.permissions.DefaultPermissions;
++// Magnet start
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.format.NamedTextColor;
++import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
++// Magnet end
+ import org.yaml.snakeyaml.Yaml;
+ import org.yaml.snakeyaml.constructor.SafeConstructor;
+ import org.yaml.snakeyaml.error.MarkedYAMLException;
+@@ -694,7 +699,7 @@ public final class CraftServer implements Server {
+             UnknownCommandEvent event = new UnknownCommandEvent(sender, commandLine, org.spigotmc.SpigotConfig.unknownCommandMessage);
+             Bukkit.getServer().getPluginManager().callEvent(event);
+             if (StringUtils.isNotEmpty(event.getMessage())) {
+-                sender.sendMessage(event.getMessage());
++                sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(event.getMessage()));
+             }
+             // Paper end
+         }
+@@ -1407,7 +1412,7 @@ public final class CraftServer implements Server {
+         message = broadcastMessageEvent.getMessage();
+ 
+         for (CommandSender recipient : recipients) {
+-            recipient.sendMessage(message);
++            recipient.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(message));
+         }
+ 
+         return recipients.size();
+@@ -1765,7 +1770,7 @@ public final class CraftServer implements Server {
+                 completions = getCommandMap().tabComplete(player, message, new Location(player.getWorld(), pos.getX(), pos.getY(), pos.getZ()));
+             }
+         } catch (CommandException ex) {
+-            player.sendMessage(ChatColor.RED + "An internal error occurred while attempting to tab-complete this command");
++            player.magnet().sendMessage(Component.text("An internal error occurred while attempting to tab-complete this command", NamedTextColor.RED));
+             getLogger().log(Level.SEVERE, "Exception when " + player.getName() + " attempted to tab complete " + message, ex);
+         }
+ 
+diff --git a/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java b/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java
+index 9abcf92db3b5c9c249a2782fb510114f48af046e..8a68b1a35289e2446d1a291d0b34b89c561a93b2 100644
+--- a/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java
++++ b/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java
+@@ -63,4 +63,13 @@ public class CraftConsoleCommandSender extends ServerCommandSender implements Co
+     public boolean isConversing() {
+         return conversationTracker.isConversing();
+     }
++
++    // Magnet start
++    private final org.bukkit.command.CommandSender.Magnet magnet = new org.mineblock.magnet.adventure.MagnetConsoleAudience(this);
++
++    @Override
++    public org.bukkit.command.CommandSender.Magnet magnet() {
++        return magnet;
++    }
++    // Magnet end
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+index fa104ba4ded09339a3b895969a1f40d3c6923f08..ef62cbf61f7d30792ba6d6850a8fce3bd58f02b7 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+@@ -1972,4 +1972,14 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+         return spigot;
+     }
+     // Spigot end
++
++    // Magnet start
++    private final org.bukkit.command.CommandSender.Magnet magnet = new org.mineblock.magnet.adventure.MagnetPlayerAudience(this);
++
++    @Override
++    public org.bukkit.command.CommandSender.Magnet magnet()
++    {
++        return magnet;
++    }
++    // Magnet end
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java b/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java
+index c623b350af9eb96636f53809bf5f14142d7d9c82..59ce3974ad1c2ab35919918544772140050f7796 100644
+--- a/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java
++++ b/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java
+@@ -341,6 +341,9 @@ public class CraftMetaBook extends CraftMetaItem implements BookMeta {
+     public CraftMetaBook clone() {
+         CraftMetaBook meta = (CraftMetaBook) super.clone();
+         meta.pages = new ArrayList<IChatBaseComponent>(pages);
++        // Magnet start - magnet 绑定原对象，克隆后重新创建
++        meta.magnet = null;
++        // Magnet end
+         return meta;
+     }
+ 
+@@ -483,4 +486,16 @@ public class CraftMetaBook extends CraftMetaItem implements BookMeta {
+         return spigot;
+     }
+     // Spigot end
++
++    // Magnet start
++    private org.bukkit.inventory.meta.BookMeta.Magnet magnet;
++
++    @Override
++    public org.bukkit.inventory.meta.BookMeta.Magnet magnet() {
++        if (magnet == null) {
++            magnet = new org.mineblock.magnet.adventure.MagnetBookMeta(this);
++        }
++        return magnet;
++    }
++    // Magnet end
+ }
+diff --git a/src/main/java/org/mineblock/magnet/MagnetConfig.java b/src/main/java/org/mineblock/magnet/MagnetConfig.java
+index 68dafcfc08fefd9c64901cab1a16bea4e661b2d3..97566bcedb2612a04136886b1a7a2d3ff55d8b26 100644
+--- a/src/main/java/org/mineblock/magnet/MagnetConfig.java
++++ b/src/main/java/org/mineblock/magnet/MagnetConfig.java
+@@ -1,5 +1,6 @@
+ package org.mineblock.magnet;
+ 
++import net.kyori.adventure.text.ComponentLike;
+ import net.minecraft.server.MinecraftServer;
+ import org.bukkit.Bukkit;
+ import org.simpleyaml.configuration.comments.CommentType;
+@@ -25,6 +26,7 @@ public class MagnetConfig {
+     private static final YamlFile config = new YamlFile();
+     private static int updates = 0;
+     private static boolean verbose;
++    private static boolean adventureConsoleAnsi = true;
+ 
+     /**
+      * 判断是否输出调试日志。
+@@ -35,6 +37,15 @@ public class MagnetConfig {
+         return verbose;
+     }
+ 
++    /**
++     * 判断控制台是否使用 ANSI 颜色。
++     *
++     * @return 启用时为 {@code true}
++     */
++    public static boolean isAdventureConsoleAnsi() {
++        return adventureConsoleAnsi;
++    }
++
+     /**
+      * 输出错误日志，不受 verbose 控制。
+      *
+@@ -44,6 +55,15 @@ public class MagnetConfig {
+         Bukkit.getLogger().severe(s);
+     }
+ 
++    /**
++     * 输出组件错误日志，不受 verbose 控制。
++     *
++     * @param component 日志组件
++     */
++    public static void logError(ComponentLike component) {
++        logError(org.mineblock.magnet.adventure.MagnetConsole.render(component));
++    }
++
+     /**
+      * 输出调试日志，仅在 verbose 开启时生效。
+      *
+@@ -55,6 +75,17 @@ public class MagnetConfig {
+         }
+     }
+ 
++    /**
++     * 输出组件调试日志，仅在 verbose 开启时生效。
++     *
++     * @param component 日志组件
++     */
++    public static void log(ComponentLike component) {
++        if (verbose) {
++            log(org.mineblock.magnet.adventure.MagnetConsole.render(component));
++        }
++    }
++
+     /**
+      * 输出带异常的调试日志，仅在 verbose 开启时生效。
+      *
+@@ -156,6 +187,13 @@ public class MagnetConfig {
+         return config.getStringList(key);
+     }
+ 
++    private static void adventure() {
++        adventureConsoleAnsi = getBoolean("settings.adventure.console-ansi", adventureConsoleAnsi, """
++                是否在控制台使用 ANSI 真彩色输出 Adventure 组件。
++                终端不支持 ANSI 时自动回退到传统颜色代码。""");
++        setComment("settings.adventure", "Adventure 组件输出。");
++    }
++
+     /**
+      * 是否启用 Velocity 现代玩家信息转发。
+      */
+diff --git a/src/main/resources/log4j2.xml b/src/main/resources/log4j2.xml
+index ff8c7d0287f53a480c4530e0465146ca5272f5f1..3536dd5f91d6829c32dea0dfb2eb60c66a4d9bf6 100644
+--- a/src/main/resources/log4j2.xml
++++ b/src/main/resources/log4j2.xml
+@@ -14,11 +14,12 @@
+         </TerminalConsole>
+         <RollingRandomAccessFile name="File" fileName="logs/latest.log" filePattern="logs/%d{yyyy-MM-dd}-%i.log.gz">
+             <PatternLayout>
+-                <LoggerNamePatternSelector defaultPattern="[%d{HH:mm:ss}] [%t/%level]: [%logger] %minecraftFormatting{%msg}{strip}%n">
++                <!-- Magnet - 文件日志同时去除 legacy 颜色与 ANSI 转义 -->
++                <LoggerNamePatternSelector defaultPattern="[%d{HH:mm:ss}] [%t/%level]: [%logger] %replace{%minecraftFormatting{%msg}{strip}}{\x1B\[[0-9;]*m}{}%n">
+                     <!-- Log root, Minecraft, Mojang and Bukkit loggers without prefix -->
+                     <!-- Disable prefix for various plugins that bypass the plugin logger -->
+                     <PatternMatch key=",net.minecraft.,Minecraft,com.mojang.,com.sk89q.,ru.tehkode.,Minecraft.AWE"
+-                                  pattern="[%d{HH:mm:ss}] [%t/%level]: %minecraftFormatting{%msg}{strip}%n" />
++                                  pattern="[%d{HH:mm:ss}] [%t/%level]: %replace{%minecraftFormatting{%msg}{strip}}{\x1B\[[0-9;]*m}{}%n" />
+                 </LoggerNamePatternSelector>
+             </PatternLayout>
+             <Policies>
