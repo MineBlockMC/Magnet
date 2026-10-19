@@ -14,7 +14,7 @@ The Java sources live in `Magnet-API/` and `Magnet-Server/`, but **neither direc
 
 ## Build, test, and package
 
-Prerequisites: Java 17, Git, `bash` on `PATH` (`setupUpstream` runs `./dionysus patch` through bash — use Git Bash on Windows), and Maven (`mvn`) on `PATH` for `paperclip`.
+Prerequisites: JDK 21 or newer (the build runs on JDK 25 and targets Java 21 bytecode), Git, `bash` on `PATH` (`setupUpstream` runs `./dionysus patch` through bash — use Git Bash on Windows), and Maven (`mvn`) on `PATH` for `paperclip`. The wrapper pins Gradle 9.8.1; the distribution URL points at the Tencent mirror and `gradlew wrapper` resets it to services.gradle.org, so restore the mirror line afterwards.
 
 First-time setup (also required after an upstream bump). It clones/patches the upstream trees, so the first run is slow:
 
@@ -63,7 +63,7 @@ gradlew upstreamCommit  # commit the submodule bump ("Updated Upstream (Dionysus
 
 The "big picture" is a layered patch stack: Minecraft 1.12.2 → Spigot/CraftBukkit → Paper → **Dionysus** (submodule, archived upstream) → **Magnet** patches.
 
-`settings.gradle.kts` applies the `xyz.jpenilla.toothpick` settings plugin, which turns the two upstream trees into Gradle projects:
+`settings.gradle.kts` applies the `xyz.jpenilla.toothpick` settings plugin, which turns the two upstream trees into Gradle projects. Upstream Toothpick is unmaintained and built against Gradle 7 + Shadow 7, so the plugin is vendored under `build-logic/` (an included build, resolved through `pluginManagement { includeBuild("build-logic") }`) and patched for Gradle 9 + Shadow 9; keep the two plugin ids (`xyz.jpenilla.toothpick`, `xyz.jpenilla.toothpick.settings`) unchanged:
 
 - `:magnet-api` ← `Dionysus/Magnet-API` + `patches/api` — the Bukkit/Paper API (`org.bukkit...`).
 - `:magnet-server` ← `Dionysus/Magnet-Server` + `patches/server` — CraftBukkit plus NMS. NMS lives in `net.minecraft.server` and is not relocated in source; Toothpick's `minecraftVersion = "1.12.2"` / `nmsPackage = "1_12_R1"` drive the packaging steps.
@@ -78,8 +78,9 @@ Magnet-specific code lives in `:magnet-server`:
 Build-script responsibilities worth knowing:
 
 - Root [`build.gradle.kts`](../build.gradle.kts) configures Toothpick (fork name, version, upstream, patch directories), adds the PaperMC repo, creates the missing decompile `libraries/` directory that `importMCDev` expects, and rewrites Paperclip POM repository URLs to HTTPS before packaging, restoring the upstream POMs afterwards via `restorePaperclipPoms` (run as `finalizedBy`). Never commit those temporary POM edits.
-- [`subprojects/api.gradle.kts`](../subprojects/api.gradle.kts) and [`subprojects/server.gradle.kts`](../subprojects/server.gradle.kts) add `--add-modules=jdk.incubator.vector` (Dionysus' SIMD code) and disable Javadoc because the 1.12.2 sources do not doc cleanly on JDK 17.
+- [`subprojects/api.gradle.kts`](../subprojects/api.gradle.kts) and [`subprojects/server.gradle.kts`](../subprojects/server.gradle.kts) disable Javadoc because the 1.12.2 sources do not doc cleanly on JDK 25. Dionysus' SIMD utilities were removed because `jdk.incubator.vector` is only safe on Java 17/18.
 - `server.gradle.kts` resolves the local Maven repository like Maven itself (`-Dmaven.repo.local`, then `settings.xml`, then `~/.m2/repository`) because `org.spigotmc:minecraft-server` is installed there by the upstream build.
+- [`build-logic/`](../build-logic) is a vendored copy of Toothpick (MIT) ported to Gradle 9 / Shadow 9. It owns the `applyPatches`/`rebuildPatches`/`paperclip`/`importMCDev` tasks, the POM-driven dependency and relocation setup, and the `runServer`/`runDevServer` tasks. Changes there affect every build, so run `gradlew help --warning-mode all` after editing it.
 
 ## Key conventions
 

@@ -8,8 +8,10 @@ toothpick {
     forkName = "Magnet"
     groupId = "org.mineblock.magnet"
     forkUrl = "https://github.com/MineBlockMC/Magnet"
+    // Magnet - providers.exec replaces the deprecated configuration-time ProcessBuilder call in
+    // ToothpickExtension.commitHash(), which Gradle 9 flags (and Gradle 11 removes).
     val versionTag = System.getenv("BUILD_NUMBER")
-        ?: "\"${commitHash() ?: error("Could not obtain git hash")}\""
+        ?: providers.exec { commandLine("git", "rev-parse", "--short=7", "HEAD") }.standardOutput.asText.get().trim()
     forkVersion = "git-$forkName-$versionTag"
 
     paperclipName = "magnetclip"
@@ -22,11 +24,11 @@ toothpick {
     upstreamBranch = "origin/dev"
 
     server {
-        project = projects.magnetServer.dependencyProject
+        project = rootProject.project(":magnet-server")
         patchesDir = rootProject.projectDir.resolve("patches/server")
     }
     api {
-        project = projects.magnetApi.dependencyProject
+        project = rootProject.project(":magnet-api")
         patchesDir = rootProject.projectDir.resolve("patches/api")
     }
 }
@@ -42,8 +44,8 @@ subprojects {
     }
 
     java {
-        sourceCompatibility = JavaVersion.toVersion(17)
-        targetCompatibility = JavaVersion.toVersion(17)
+        sourceCompatibility = JavaVersion.toVersion(21)
+        targetCompatibility = JavaVersion.toVersion(21)
     }
 
     publishing.repositories.maven {

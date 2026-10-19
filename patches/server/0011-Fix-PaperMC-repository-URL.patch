@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Mon, 19 Oct 2026 13:49:46 +0800
+Subject: [PATCH] Fix PaperMC repository URL
+
+
+diff --git a/pom.xml b/pom.xml
+index 6ddf8946a4c554c365d5744dff2bcf56549ed6e8..ba26da06dc550a4a62c0e529f69d3548c59e1ea7 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -209,7 +209,8 @@
+         <repository>
+             <!-- Paper start - update log4j -->
+             <id>paper</id>
+-            <url>https://papermc.io/repo/repository/maven-public/</url>
++            <!-- Magnet - papermc.io 已停用，改用当前的 PaperMC 仓库 -->
++            <url>https://repo.papermc.io/repository/maven-public/</url>
+         </repository>
+         <repository>
+             <id>spigotmc-public</id>
+@@ -224,7 +225,8 @@
+     <pluginRepositories>
+         <pluginRepository>
+             <id>paper</id>
+-            <url>https://papermc.io/repo/repository/maven-public/</url>
++            <!-- Magnet - papermc.io 已停用，改用当前的 PaperMC 仓库 -->
++            <url>https://repo.papermc.io/repository/maven-public/</url>
+             <!-- paper end - update log4j -->
+         </pluginRepository>
+     </pluginRepositories>

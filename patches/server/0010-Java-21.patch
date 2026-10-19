@@ -1,0 +1,68 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Mon, 19 Oct 2026 12:24:00 +0800
+Subject: [PATCH] Java 21
+
+
+diff --git a/pom.xml b/pom.xml
+index c918a9ae26f31c3b828120ca40fcf243c7e39117..6ddf8946a4c554c365d5744dff2bcf56549ed6e8 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -17,8 +17,9 @@
+         <buildtag.suffix></buildtag.suffix>
+         <maven.build.timestamp.format>yyyyMMdd-HHmm</maven.build.timestamp.format>
+         <!-- Dionysus - Java 17! -->
+-        <maven.compiler.source>17</maven.compiler.source>
+-        <maven.compiler.target>17</maven.compiler.target>
++        <!-- Magnet - Java 21, Thank you. -->
++        <maven.compiler.source>21</maven.compiler.source>
++        <maven.compiler.target>21</maven.compiler.target>
+ 
+         <log4j2.version>2.26.1</log4j2.version>
+     </properties>
+@@ -364,9 +365,6 @@
+                 <groupId>org.apache.maven.plugins</groupId>
+                 <artifactId>maven-compiler-plugin</artifactId>
+                 <version>3.7.0</version>
+-                <configuration>
+-                    <compilerArgs>--add-modules=jdk.incubator.vector</compilerArgs>
+-                </configuration>
+             </plugin>
+             <plugin>
+                 <groupId>org.apache.maven.plugins</groupId>
+diff --git a/src/main/java/dev/pomf/dionysus/DionysusConfig.java b/src/main/java/dev/pomf/dionysus/DionysusConfig.java
+index 1b24480f56ff26685a2742dd5a5785c8a5c67c41..cf2bc66e964248b02d21e85b0f7852b1a372c1d1 100644
+--- a/src/main/java/dev/pomf/dionysus/DionysusConfig.java
++++ b/src/main/java/dev/pomf/dionysus/DionysusConfig.java
+@@ -1,6 +1,5 @@
+ package dev.pomf.dionysus;
+ 
+-import dev.pomf.dionysus.simd.SIMDDetection;
+ import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.RegionFile;
+ import org.bukkit.Bukkit;
+@@ -94,23 +93,7 @@ public class DionysusConfig {
+ 
+         config.save(configFile);
+ 
+-        // Attempt to detect vectorization
+-        try {
+-            SIMDDetection.isEnabled = SIMDDetection.canEnable(DionysusLogger.LOGGER);
+-            SIMDDetection.versionLimited = SIMDDetection.getJavaVersion() != 17 && SIMDDetection.getJavaVersion() != 18;
+-        } catch (NoClassDefFoundError | Exception ignored) {
+-        }
+-
+-        if (SIMDDetection.isEnabled) {
+-            DionysusLogger.LOGGER.info("SIMD operations detected as functional. Will replace some operations with faster versions.");
+-        } else if (SIMDDetection.versionLimited) {
+-            //DionysusLogger.LOGGER.warning("Will not enable SIMD! These optimizations are only safely supported on Java 17 and Java 18."); // Magnet
+-        } else {
+-            DionysusLogger.LOGGER.warning("SIMD operations are available for your server, but are not configured!");
+-            DionysusLogger.LOGGER.warning("To enable additional optimizations, add \"--add-modules=jdk.incubator.vector\" to your startup flags, BEFORE the \"-jar\".");
+-            DionysusLogger.LOGGER.warning("If you have already added this flag, then SIMD operations are not supported on your JVM or CPU.");
+-            DionysusLogger.LOGGER.warning("Debug: Java: " + System.getProperty("java.version") + ", test run: " + SIMDDetection.testRun);
+-        }
++        // Magnet - 移除仅在 Java 17/18 安全的 SIMD 检测与提示
+     }
+ 
+     private static void setComment(String key, String... comment) {

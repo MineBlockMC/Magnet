@@ -38,12 +38,8 @@ repositories {
     }
 }
 
-// Magnet - Dionysus' server sources also reference jdk.incubator.vector.
-tasks.withType<org.gradle.api.tasks.compile.JavaCompile> {
-    options.compilerArgs.add("--add-modules=jdk.incubator.vector")
-}
 
-// Magnet - only the server jar is required; the old 1.12.2 sources do not Javadoc cleanly on JDK 17.
+// Magnet - only the server jar is required; the old 1.12.2 sources do not Javadoc cleanly on modern JDKs.
 tasks.withType<org.gradle.api.tasks.javadoc.Javadoc> {
     enabled = false
 }
@@ -63,6 +59,8 @@ dependencies {
 }
 
 tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
-    configurations = listOf(pinnedLog4j) + configurations
+    // Magnet - Shadow 9 exposes `configurations` as a SetProperty; runtimeClasspath is still the
+    // default entry, but the pinned log4j must stay first so it wins duplicate-entry resolution.
+    configurations.set(listOf(pinnedLog4j, project.configurations.getByName("runtimeClasspath")))
 }
 

@@ -21,6 +21,7 @@ nbactions.xml
 # Gradle
 !gradle-wrapper.jar
 .gradle/
+.kotlin/
 build/
 */build/
 

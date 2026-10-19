@@ -1,0 +1,230 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Mon, 19 Oct 2026 12:24:00 +0800
+Subject: [PATCH] Java 21
+
+
+diff --git a/pom.xml b/pom.xml
+index e2aeab4803c533915100aabc31a4e3ba03527052..e0b43f91c5063f8e113ad566bbc61a17b058f155 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -21,8 +21,9 @@
+     <properties>
+         <!-- Paper - Bump to 1.8 - Get off your dinosaur and get on this rocket ship... -->
+         <!-- Dionysus - Java 17! -->
+-        <maven.compiler.source>17</maven.compiler.source>
+-        <maven.compiler.target>17</maven.compiler.target>
++        <!-- Magnet - Java 21, Thank you. -->
++        <maven.compiler.source>21</maven.compiler.source>
++        <maven.compiler.target>21</maven.compiler.target>
+         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+     </properties>
+ 
+@@ -171,9 +172,6 @@
+                         <version>2.8.2-spigotmc</version>
+                     </dependency>
+                 </dependencies>
+-                <configuration>
+-                    <compilerArgs>--add-modules=jdk.incubator.vector</compilerArgs>
+-                </configuration>
+             </plugin>
+             <plugin>
+                 <groupId>org.apache.maven.plugins</groupId>
+diff --git a/src/main/java/dev/pomf/dionysus/simd/SIMDChecker.java b/src/main/java/dev/pomf/dionysus/simd/SIMDChecker.java
+deleted file mode 100644
+index c820b35f577bbceef72bfca8dbd7fa2524217e8f..0000000000000000000000000000000000000000
+--- a/src/main/java/dev/pomf/dionysus/simd/SIMDChecker.java
++++ /dev/null
+@@ -1,40 +0,0 @@
+-package dev.pomf.dionysus.simd;
+-
+-import java.util.logging.Level;
+-import java.util.logging.Logger;
+-import jdk.incubator.vector.FloatVector;
+-import jdk.incubator.vector.IntVector;
+-import jdk.incubator.vector.VectorSpecies;
+-
+-/**
+- * Basically, java is annoying and we have to push this out to its own class.
+- */
+-@Deprecated
+-public class SIMDChecker {
+-
+-    @Deprecated
+-    public static boolean canEnable(Logger logger) {
+-        try {
+-            if (SIMDDetection.getJavaVersion() != 17 && SIMDDetection.getJavaVersion() != 18) {
+-                return false;
+-            } else {
+-                SIMDDetection.testRun = true;
+-
+-                VectorSpecies<Integer> ISPEC = IntVector.SPECIES_PREFERRED;
+-                VectorSpecies<Float> FSPEC = FloatVector.SPECIES_PREFERRED;
+-
+-                logger.log(Level.INFO, "Max SIMD vector size on this system is " + ISPEC.vectorBitSize() + " bits (int)");
+-                logger.log(Level.INFO, "Max SIMD vector size on this system is " + FSPEC.vectorBitSize() + " bits (float)");
+-
+-                if (ISPEC.elementSize() < 2 || FSPEC.elementSize() < 2) {
+-                    logger.log(Level.WARNING, "SIMD is not properly supported on this system!");
+-                    return false;
+-                }
+-
+-                return true;
+-            }
+-        } catch (NoClassDefFoundError | Exception ignored) {} // Basically, we don't do anything. This lets us detect if it's not functional and disable it.
+-        return false;
+-    }
+-
+-}
+\ No newline at end of file
+diff --git a/src/main/java/dev/pomf/dionysus/simd/SIMDDetection.java b/src/main/java/dev/pomf/dionysus/simd/SIMDDetection.java
+deleted file mode 100644
+index 7b0f1d4aa33070750bb35a2b4de2938f23a81c94..0000000000000000000000000000000000000000
+--- a/src/main/java/dev/pomf/dionysus/simd/SIMDDetection.java
++++ /dev/null
+@@ -1,35 +0,0 @@
+-package dev.pomf.dionysus.simd;
+-
+-import java.util.logging.Logger;
+-
+-@Deprecated
+-public class SIMDDetection {
+-
+-    public static boolean isEnabled = false;
+-    public static boolean versionLimited = false;
+-    public static boolean testRun = false;
+-
+-    @Deprecated
+-    public static boolean canEnable(Logger logger) {
+-        try {
+-            return SIMDChecker.canEnable(logger);
+-        } catch (NoClassDefFoundError | Exception ignored) {
+-            return false;
+-        }
+-    }
+-
+-    @Deprecated
+-    public static int getJavaVersion() {
+-        // https://stackoverflow.com/a/2591122
+-        String version = System.getProperty("java.version");
+-        if(version.startsWith("1.")) {
+-            version = version.substring(2, 3);
+-        } else {
+-            int dot = version.indexOf(".");
+-            if(dot != -1) { version = version.substring(0, dot); }
+-        }
+-        version = version.split("-")[0]; // Azul is stupid
+-        return Integer.parseInt(version);
+-    }
+-
+-}
+diff --git a/src/main/java/dev/pomf/dionysus/simd/VectorMapPalette.java b/src/main/java/dev/pomf/dionysus/simd/VectorMapPalette.java
+deleted file mode 100644
+index b58decb2b58d70fc8623fa34bb596a20b43c6aa3..0000000000000000000000000000000000000000
+--- a/src/main/java/dev/pomf/dionysus/simd/VectorMapPalette.java
++++ /dev/null
+@@ -1,83 +0,0 @@
+-package dev.pomf.dionysus.simd;
+-
+-import java.awt.Color;
+-import jdk.incubator.vector.FloatVector;
+-import jdk.incubator.vector.IntVector;
+-import jdk.incubator.vector.VectorMask;
+-import jdk.incubator.vector.VectorSpecies;
+-import org.bukkit.map.MapPalette;
+-
+-@Deprecated
+-public class VectorMapPalette {
+-
+-    private static final VectorSpecies<Integer> I_SPEC = IntVector.SPECIES_PREFERRED;
+-    private static final VectorSpecies<Float> F_SPEC = FloatVector.SPECIES_PREFERRED;
+-
+-    @Deprecated
+-    public static void matchColorVectorized(int[] in, byte[] out) {
+-        int speciesLength = I_SPEC.length();
+-        int i;
+-        for (i = 0; i < in.length - speciesLength; i += speciesLength) {
+-            float[] redsArr = new float[speciesLength];
+-            float[] bluesArr = new float[speciesLength];
+-            float[] greensArr = new float[speciesLength];
+-            int[] alphasArr = new int[speciesLength];
+-
+-            for (int j = 0; j < speciesLength; j++) {
+-                alphasArr[j] = (in[i + j] >> 24) & 0xFF;
+-                redsArr[j] = (in[i + j] >> 16) & 0xFF;
+-                greensArr[j] = (in[i + j] >> 8) & 0xFF;
+-                bluesArr[j] = (in[i + j] >> 0) & 0xFF;
+-            }
+-
+-            IntVector alphas = IntVector.fromArray(I_SPEC, alphasArr, 0);
+-            FloatVector reds = FloatVector.fromArray(F_SPEC, redsArr, 0);
+-            FloatVector greens = FloatVector.fromArray(F_SPEC, greensArr, 0);
+-            FloatVector blues = FloatVector.fromArray(F_SPEC, bluesArr, 0);
+-            IntVector resultIndex = IntVector.zero(I_SPEC);
+-            VectorMask<Integer> modificationMask = VectorMask.fromLong(I_SPEC, 0xffffffff);
+-
+-            modificationMask = modificationMask.and(alphas.lt(128).not());
+-            FloatVector bestDistances = FloatVector.broadcast(F_SPEC, Float.MAX_VALUE);
+-
+-            for (int c = 4; c < MapPalette.colors.length; c++) {
+-                // We're using 32-bit floats here because it's 2x faster and nobody will know the difference.
+-                // For correctness, the original algorithm uses 64-bit floats instead. Completely unnecessary.
+-                FloatVector compReds = FloatVector.broadcast(F_SPEC, MapPalette.colors[c].getRed());
+-                FloatVector compGreens = FloatVector.broadcast(F_SPEC, MapPalette.colors[c].getGreen());
+-                FloatVector compBlues = FloatVector.broadcast(F_SPEC, MapPalette.colors[c].getBlue());
+-
+-                FloatVector rMean = reds.add(compReds).div(2.0f);
+-                FloatVector rDiff = reds.sub(compReds);
+-                FloatVector gDiff = greens.sub(compGreens);
+-                FloatVector bDiff = blues.sub(compBlues);
+-
+-                FloatVector weightR = rMean.div(256.0f).add(2);
+-                FloatVector weightG = FloatVector.broadcast(F_SPEC, 4.0f);
+-                FloatVector weightB = FloatVector.broadcast(F_SPEC, 255.0f).sub(rMean).div(256.0f).add(2.0f);
+-
+-                FloatVector distance = weightR.mul(rDiff).mul(rDiff).add(weightG.mul(gDiff).mul(gDiff)).add(weightB.mul(bDiff).mul(bDiff));
+-
+-                // Now we compare to the best distance we've found.
+-                // This mask contains a "1" if better, and a "0" otherwise.
+-                VectorMask<Float> bestDistanceMask = distance.lt(bestDistances);
+-                bestDistances = bestDistances.blend(distance, bestDistanceMask); // Update the best distances
+-
+-                // Update the result array
+-                // We also AND with the modification mask because we don't want to interfere if the alpha value isn't large enough.
+-                resultIndex = resultIndex.blend(c, bestDistanceMask.cast(I_SPEC).and(modificationMask)); // Update the results
+-            }
+-
+-            for (int j = 0; j < speciesLength; j++) {
+-                int index = resultIndex.lane(j);
+-                out[i + j] = (byte) (index < 128 ? index : -129 + (index - 127));
+-            }
+-        }
+-
+-        // For the final ones, fall back to the regular method
+-        for (; i < in.length; i++) {
+-            out[i] = MapPalette.matchColor(new Color(in[i], true));
+-        }
+-    }
+-
+-}
+diff --git a/src/main/java/org/bukkit/map/MapPalette.java b/src/main/java/org/bukkit/map/MapPalette.java
+index c9eb077887d72e0517956c8d372212f95260886f..fcc676d545cc74769309a2a432ff3feb918c4111 100644
+--- a/src/main/java/org/bukkit/map/MapPalette.java
++++ b/src/main/java/org/bukkit/map/MapPalette.java
+@@ -189,15 +189,10 @@ public final class MapPalette {
+         temp.getRGB(0, 0, temp.getWidth(), temp.getHeight(), pixels, 0, temp.getWidth());
+ 
+         byte[] result = new byte[temp.getWidth() * temp.getHeight()];
+-        // Dionysus start
+-        if (!dev.pomf.dionysus.simd.SIMDDetection.isEnabled) {
++        // Magnet - 移除仅在 Java 17/18 安全的 SIMD 优化，恢复逐像素匹配
+         for (int i = 0; i < pixels.length; i++) {
+             result[i] = matchColor(new Color(pixels[i], true));
+         }
+-        } else {
+-            dev.pomf.dionysus.simd.VectorMapPalette.matchColorVectorized(pixels, result);
+-        }
+-        // Dionysus end
+         return result;
+     }
+ 
