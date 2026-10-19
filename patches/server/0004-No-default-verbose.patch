@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Wed, 7 Oct 2026 15:01:58 +0800
+Subject: [PATCH] No default verbose
+
+
+diff --git a/src/main/java/org/spigotmc/SpigotWorldConfig.java b/src/main/java/org/spigotmc/SpigotWorldConfig.java
+index d58f1a8d5ea9d439ac51ce607cdad6fa63f49216..700e74b908209446035fa316bed0ed6c65af4d25 100644
+--- a/src/main/java/org/spigotmc/SpigotWorldConfig.java
++++ b/src/main/java/org/spigotmc/SpigotWorldConfig.java
+@@ -20,7 +20,7 @@ public class SpigotWorldConfig
+ 
+     public void init()
+     {
+-        this.verbose = getBoolean( "verbose", true );
++        this.verbose = getBoolean( "verbose", false ); // Magnet
+ 
+         log( "-------- World Settings For [" + worldName + "] --------" );
+         SpigotConfig.readConfig( SpigotWorldConfig.class, this );
