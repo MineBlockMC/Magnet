@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
-Date: Fri, 16 Oct 2026 14:50:10 +0800
+Date: Mon, 19 Oct 2026 10:37:11 +0800
 Subject: [PATCH] Velocity modern forward
 
 
@@ -88,7 +88,7 @@ index 098c51675e8b0a0543676797d1abc4b6769c30d7..69e51c0b278e3dbbfcfce79bf50fa27a
                      pending.add(networkmanager); // Paper
                      channel.pipeline().addLast("packet_handler", networkmanager);
 diff --git a/src/main/java/org/mineblock/magnet/MagnetConfig.java b/src/main/java/org/mineblock/magnet/MagnetConfig.java
-index c796170aefea0533c90d55fb82ab8553203dc110..92ad6fb35bf0c0d9b2693ef2e52b1f7d59044f15 100644
+index b9301ce0f81dff335df42d60c528dca79e34ca0a..6c5ca038e3534592b601e75a8f75c9f8fccb89bf 100644
 --- a/src/main/java/org/mineblock/magnet/MagnetConfig.java
 +++ b/src/main/java/org/mineblock/magnet/MagnetConfig.java
 @@ -10,6 +10,8 @@ import java.io.File;
@@ -98,9 +98,9 @@ index c796170aefea0533c90d55fb82ab8553203dc110..92ad6fb35bf0c0d9b2693ef2e52b1f7d
 +import java.nio.charset.StandardCharsets;
 +import java.nio.file.Files;
  import java.util.List;
+ import java.util.logging.Level;
  
- public class MagnetConfig {
-@@ -106,4 +108,71 @@ public class MagnetConfig {
+@@ -119,4 +121,68 @@ public class MagnetConfig {
          ensureDefault(key, defaultValue, comment);
          return config.getStringList(key);
      }
@@ -119,7 +119,8 @@ index c796170aefea0533c90d55fb82ab8553203dc110..92ad6fb35bf0c0d9b2693ef2e52b1f7d
 +                  - Velocity must use player-info-forwarding-mode = "modern" with the same secret.
 +                  - This server MUST run with online-mode=false (Velocity authenticates players).
 +                  - This server MUST have ViaVersion installed, or clients newer than 1.12.2 cannot connect.
-+                  - Restrict this server's port to your proxy (firewall); the secret is the only authentication.""");
++                  - Restrict this server's port to your proxy (firewall); the secret is the only authentication.
++                Set "verbose: true" at the top of this file to log details about the forwarding handshake.""");
 +
 +        velocitySupportOnlineMode = getBoolean("settings.velocity-support.online-mode", velocitySupportOnlineMode, """
 +                Whether Velocity performs Mojang authentication for players.
@@ -137,10 +138,6 @@ index c796170aefea0533c90d55fb82ab8553203dc110..92ad6fb35bf0c0d9b2693ef2e52b1f7d
 +        setComment("settings.velocity-support", "Velocity modern player info forwarding (EXPERIMENTAL).");
 +
 +        if (velocitySupportEnabled) {
-+            Bukkit.getLogger().warning("[Magnet] Velocity modern forwarding (experimental) is enabled. Make sure Velocity uses"
-+                    + " player-info-forwarding-mode \"modern\" with a matching secret, that this server runs online-mode=false"
-+                    + " and that ViaVersion is installed.");
-+
 +            if (velocitySecret.isEmpty()) {
 +                logError("[Magnet] settings.velocity-support.enabled is true, but no forwarding secret was found."
 +                        + " Set settings.velocity-support.secret or settings.velocity-support.forwarding-secret-file,"
@@ -174,10 +171,10 @@ index c796170aefea0533c90d55fb82ab8553203dc110..92ad6fb35bf0c0d9b2693ef2e52b1f7d
  }
 diff --git a/src/main/java/org/mineblock/magnet/proxy/VelocityForwardingHandler.java b/src/main/java/org/mineblock/magnet/proxy/VelocityForwardingHandler.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..cdf3b4a5c16afdde7aacc9e04e9cf11a79e93e22
+index 0000000000000000000000000000000000000000..dd7fb029c083f20df50b6c0bb21380132e3bace2
 --- /dev/null
 +++ b/src/main/java/org/mineblock/magnet/proxy/VelocityForwardingHandler.java
-@@ -0,0 +1,108 @@
+@@ -0,0 +1,131 @@
 +package org.mineblock.magnet.proxy;
 +
 +import com.mojang.authlib.GameProfile;
@@ -188,6 +185,7 @@ index 0000000000000000000000000000000000000000..cdf3b4a5c16afdde7aacc9e04e9cf11a
 +import net.minecraft.server.LoginListener;
 +import net.minecraft.server.NetworkManager;
 +import net.minecraft.server.PacketListener;
++import org.mineblock.magnet.MagnetConfig;
 +
 +import java.net.InetAddress;
 +import java.net.InetSocketAddress;
@@ -202,7 +200,8 @@ index 0000000000000000000000000000000000000000..cdf3b4a5c16afdde7aacc9e04e9cf11a
 + * is exactly what would otherwise happen, since a 1.12.2 server has no packet to translate
 + * {@code ServerboundLoginPackets.CUSTOM_QUERY_ANSWER} onto.
 + * <p>
-+ * Everything else is passed through untouched.
++ * Everything else is passed through untouched. Set {@code verbose: true} in {@code magnet.yml} to
++ * log what this handler sees; that is the intended way to diagnose a failing handshake.
 + */
 +public class VelocityForwardingHandler extends ChannelInboundHandlerAdapter {
 +
@@ -238,60 +237,81 @@ index 0000000000000000000000000000000000000000..cdf3b4a5c16afdde7aacc9e04e9cf11a
 +
 +        final ByteBuf buf = (ByteBuf) msg;
 +        final ByteBuf peek = buf.duplicate();
-+        if (peek.readableBytes() < 1 || VelocityProxy.readVarInt(peek) != LOGIN_PLUGIN_RESPONSE_PACKET_ID) {
++        if (peek.readableBytes() < 1) {
 +            super.channelRead(ctx, msg);
 +            return;
 +        }
 +
-+        consume(ctx, buf);
++        final int peekedPacketId = VelocityProxy.readVarInt(peek);
++        if (peekedPacketId != LOGIN_PLUGIN_RESPONSE_PACKET_ID) {
++            MagnetConfig.log("[Magnet] Ignoring login packet 0x" + Integer.toHexString(peekedPacketId)
++                    + " while waiting for the Velocity answer");
++            super.channelRead(ctx, msg);
++            return;
++        }
 +
++        InetSocketAddress clientAddress = null;
++        GameProfile profile = null;
++        String disconnectReason = null;
++
++        // Parse first, release afterwards: Netty's default checkAccessible makes any read on a
++        // released buffer throw IllegalReferenceCountException.
 +        try {
++            MagnetConfig.log("[Magnet] Got a Velocity login plugin message (" + buf.readableBytes() + " bytes)");
++
 +            VelocityProxy.readVarInt(buf); // packet id
 +            final int messageId = VelocityProxy.readVarInt(buf);
 +            final boolean success = buf.readBoolean();
++            MagnetConfig.log("[Magnet] Velocity answer: message id " + messageId + " (expected "
++                    + expectedMessageId + "), success=" + success);
 +
 +            if (messageId != expectedMessageId || !success) {
-+                loginListener.disconnect("This server requires you to connect with Velocity.");
-+                return;
++                disconnectReason = "This server requires you to connect with Velocity.";
++            } else if (!VelocityProxy.checkIntegrity(buf)) {
++                disconnectReason = "Unable to verify player details";
++            } else {
++                final int version = VelocityProxy.readVarInt(buf);
++                MagnetConfig.log("[Magnet] Velocity forwarding data version " + version);
++
++                if (version > VelocityProxy.SUPPORTED_FORWARDING_VERSION) {
++                    disconnectReason = "Unsupported Velocity forwarding version " + version;
++                } else {
++                    final InetAddress address = VelocityProxy.readAddress(buf);
++                    final GameProfile forwardedProfile = VelocityProxy.createProfile(buf);
++
++                    final SocketAddress listening = this.networkManager.getSocketAddress();
++                    final int port = listening instanceof InetSocketAddress ? ((InetSocketAddress) listening).getPort() : 0;
++
++                    MagnetConfig.log("[Magnet] Forwarded player " + forwardedProfile.getName() + " ("
++                            + forwardedProfile.getId() + ") from " + address);
++
++                    clientAddress = new InetSocketAddress(address, port);
++                    profile = forwardedProfile;
++                }
 +            }
-+
-+            if (!VelocityProxy.checkIntegrity(buf)) {
-+                loginListener.disconnect("Unable to verify player details");
-+                return;
-+            }
-+
-+            final int version = VelocityProxy.readVarInt(buf);
-+            if (version > VelocityProxy.SUPPORTED_FORWARDING_VERSION) {
-+                loginListener.disconnect("Unsupported Velocity forwarding version " + version);
-+                return;
-+            }
-+
-+            final InetAddress address = VelocityProxy.readAddress(buf);
-+            final GameProfile profile = VelocityProxy.createProfile(buf);
-+
-+            final SocketAddress listening = this.networkManager.getSocketAddress();
-+            final int port = listening instanceof InetSocketAddress ? ((InetSocketAddress) listening).getPort() : 0;
-+
-+            loginListener.handleVelocityForwarding(new InetSocketAddress(address, port), profile);
 +        } catch (Exception ex) {
-+            loginListener.disconnect("Unable to verify player details");
++            MagnetConfig.log("[Magnet] Failed to read the Velocity login plugin message", ex);
++            disconnectReason = "Unable to verify player details";
++        } finally {
++            ReferenceCountUtil.release(buf);
++            if (ctx.pipeline().context(this) != null) {
++                ctx.pipeline().remove(this);
++            }
 +        }
-+    }
 +
-+    /** Drops the packet from the pipeline (never fires it) and removes this handler again. */
-+    private void consume(ChannelHandlerContext ctx, ByteBuf buf) {
-+        ReferenceCountUtil.release(buf);
-+        if (ctx.pipeline().context(this) != null) {
-+            ctx.pipeline().remove(this);
++        if (disconnectReason != null) {
++            loginListener.disconnect(disconnectReason);
++        } else {
++            loginListener.handleVelocityForwarding(clientAddress, profile);
 +        }
 +    }
 +}
 diff --git a/src/main/java/org/mineblock/magnet/proxy/VelocityProxy.java b/src/main/java/org/mineblock/magnet/proxy/VelocityProxy.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..ad184e27b948a45b80cd608f0ee043249bf55871
+index 0000000000000000000000000000000000000000..118a29a99d2eccd6cc029912a4b9f474056409a6
 --- /dev/null
 +++ b/src/main/java/org/mineblock/magnet/proxy/VelocityProxy.java
-@@ -0,0 +1,164 @@
+@@ -0,0 +1,189 @@
 +package org.mineblock.magnet.proxy;
 +
 +import com.google.common.net.InetAddresses;
@@ -347,6 +367,8 @@ index 0000000000000000000000000000000000000000..ad184e27b948a45b80cd608f0ee04324
 +            return;
 +        }
 +
++        MagnetConfig.log("[Magnet] Requesting player details from Velocity (message id " + messageId + ")");
++
 +        final ByteBuf packet = Unpooled.buffer();
 +        final ByteBuf frame = Unpooled.buffer();
 +        try {
@@ -371,7 +393,13 @@ index 0000000000000000000000000000000000000000..ad184e27b948a45b80cd608f0ee04324
 +     */
 +    public static boolean checkIntegrity(ByteBuf buf) {
 +        final String secret = MagnetConfig.velocitySecret;
-+        if (secret == null || secret.isEmpty() || buf.readableBytes() < 32) {
++        if (secret == null || secret.isEmpty()) {
++            MagnetConfig.log("[Magnet] No Velocity forwarding secret is configured, cannot verify the proxy");
++            return false;
++        }
++
++        if (buf.readableBytes() < 32) {
++            MagnetConfig.log("[Magnet] Velocity forwarding payload is too short (" + buf.readableBytes() + " bytes)");
 +            return false;
 +        }
 +
@@ -384,10 +412,27 @@ index 0000000000000000000000000000000000000000..ad184e27b948a45b80cd608f0ee04324
 +        try {
 +            final Mac mac = Mac.getInstance("HmacSHA256");
 +            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-+            return MessageDigest.isEqual(signature, mac.doFinal(data));
++            final byte[] expected = mac.doFinal(data);
++            final boolean valid = MessageDigest.isEqual(signature, expected);
++            if (!valid) {
++                MagnetConfig.log("[Magnet] Velocity forwarding signature mismatch (secret length " + secret.length() + ")"
++                        + "\n  received: " + toHex(signature)
++                        + "\n  computed: " + toHex(expected)
++                        + "\n  payload : " + toHex(java.util.Arrays.copyOf(data, Math.min(data.length, 256)))
++                        + (data.length > 256 ? " ... (" + data.length + " bytes)" : ""));
++            }
++            return valid;
 +        } catch (final InvalidKeyException | NoSuchAlgorithmException e) {
 +            throw new AssertionError(e);
 +        }
++    }
++
++    private static String toHex(byte[] bytes) {
++        final StringBuilder builder = new StringBuilder(bytes.length * 2);
++        for (byte b : bytes) {
++            builder.append(Character.forDigit(b >> 4 & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
++        }
++        return builder.toString();
 +    }
 +
 +    public static InetAddress readAddress(ByteBuf buf) {
