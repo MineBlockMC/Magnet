@@ -5,25 +5,23 @@ Subject: [PATCH] Magnet configuration
 
 
 diff --git a/src/main/java/net/minecraft/server/DedicatedServer.java b/src/main/java/net/minecraft/server/DedicatedServer.java
-index 0fed3a53188afabda87765a303dd7be4b0428cdd..4325b232535000c6a58e3933fa639c1d5ad39b10 100644
+index 0fed3a53188afabda87765a303dd7be4b0428cdd..ee652d538aeda823d86ef967f818953b88dc7e3d 100644
 --- a/src/main/java/net/minecraft/server/DedicatedServer.java
 +++ b/src/main/java/net/minecraft/server/DedicatedServer.java
-@@ -205,6 +205,9 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
+@@ -205,6 +205,7 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
              dev.pomf.dionysus.DionysusConfig.load();
              dev.pomf.dionysus.DionysusCommand.init();
              // Dionysus end
-+            // Magnet start
-+            org.mineblock.magnet.MagnetConfig.load();
-+            // Magnet end
++            org.mineblock.magnet.MagnetConfig.load(); // Magnet - 加载 magnet.yml
  
              DedicatedServer.LOGGER.info("Generating keypair");
              this.a(MinecraftEncryption.b());
 diff --git a/src/main/java/org/mineblock/magnet/MagnetConfig.java b/src/main/java/org/mineblock/magnet/MagnetConfig.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..b9301ce0f81dff335df42d60c528dca79e34ca0a
+index 0000000000000000000000000000000000000000..095cf45765d69b7789cc3df5d588cdc93e755d71
 --- /dev/null
 +++ b/src/main/java/org/mineblock/magnet/MagnetConfig.java
-@@ -0,0 +1,122 @@
+@@ -0,0 +1,156 @@
 +package org.mineblock.magnet;
 +
 +import net.minecraft.server.MinecraftServer;
@@ -39,36 +37,72 @@ index 0000000000000000000000000000000000000000..b9301ce0f81dff335df42d60c528dca7
 +import java.util.List;
 +import java.util.logging.Level;
 +
++/**
++ * 读取并写回 magnet.yml。
++ * <p>
++ * 每个私有静态无参 {@code void} 方法对应一个配置项，{@link #load()} 会反射调用它们。
++ */
 +public class MagnetConfig {
 +
 +    private static final YamlFile config = new YamlFile();
 +    private static int updates = 0;
 +    private static boolean verbose;
 +
++    /**
++     * 判断是否输出调试日志。
++     *
++     * @return verbose 开启时为 {@code true}
++     */
 +    public static boolean isVerbose() {
 +        return verbose;
 +    }
 +
++    /**
++     * 输出错误日志，不受 verbose 控制。
++     *
++     * @param s 日志内容
++     */
 +    public static void logError(String s) {
 +        Bukkit.getLogger().severe(s);
 +    }
 +
++    /**
++     * 输出调试日志，仅在 verbose 开启时生效。
++     *
++     * @param s 日志内容
++     */
 +    public static void log(String s) {
 +        if (verbose) {
 +            Bukkit.getLogger().info(s);
 +        }
 +    }
 +
++    /**
++     * 输出带异常的调试日志，仅在 verbose 开启时生效。
++     *
++     * @param s 日志内容
++     * @param thrown 关联异常
++     */
 +    public static void log(String s, Throwable thrown) {
 +        if (verbose) {
 +            Bukkit.getLogger().log(Level.INFO, s, thrown);
 +        }
 +    }
 +
++    /**
++     * 获取配置加载次数。
++     *
++     * @return 已执行的加载次数
++     */
 +    public static int getUpdates() {
 +        return updates;
 +    }
 +
++    /**
++     * 从工作目录读取 magnet.yml，补全缺失的默认值后写回。
++     *
++     * @throws IOException 配置文件无法读取或保存
++     */
 +    public static void load() throws IOException {
 +        File configFile = new File("magnet.yml");
 +
@@ -81,15 +115,13 @@ index 0000000000000000000000000000000000000000..b9301ce0f81dff335df42d60c528dca7
 +        }
 +
 +        getString("config-version", "1", """
-+                This is the main configuration file for Magnet.
-+                As you can see, there's tons to configure. Some options may impact gameplay,
-+                so use with caution, and make sure you know what each option does before configuring.
++                Magnet 的主配置文件。
++                部分选项会影响游戏行为，修改前请确认其作用。
 +                Github: https://github.com/MineBlockMC/Magnet"""
 +        );
 +
 +        verbose = getBoolean("verbose", false, """
-+                Enables extra debug output in the console.
-+                Useful when diagnosing a feature that is not behaving as expected.""");
++                在控制台输出额外的调试信息，便于排查功能异常。""");
 +
 +        for (Method method : MagnetConfig.class.getDeclaredMethods()) {
 +            if (Modifier.isStatic(method.getModifiers()) && Modifier.isPrivate(method.getModifiers()) && method.getParameterCount() == 0 &&

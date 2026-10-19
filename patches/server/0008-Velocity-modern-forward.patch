@@ -5,24 +5,23 @@ Subject: [PATCH] Velocity modern forward
 
 
 diff --git a/src/main/java/net/minecraft/server/LoginListener.java b/src/main/java/net/minecraft/server/LoginListener.java
-index 30a2097975868ff80232cd0c32d7d55b0c374aa1..ef74f2639131474515112e715e4e36a05dc47dc0 100644
+index 30a2097975868ff80232cd0c32d7d55b0c374aa1..35b2f74b8749ebdd81176fa96eac1c915d657baf 100644
 --- a/src/main/java/net/minecraft/server/LoginListener.java
 +++ b/src/main/java/net/minecraft/server/LoginListener.java
 @@ -47,6 +47,7 @@ public class LoginListener implements PacketLoginInListener, ITickable {
      private SecretKey loginKey;
      private EntityPlayer l;
      public String hostname = ""; // CraftBukkit - add field
-+    public int velocityLoginMessageId = -1; // Magnet - Velocity modern forwarding
++    public int velocityLoginMessageId = -1; // Magnet - Velocity 现代转发
  
      public LoginListener(MinecraftServer minecraftserver, NetworkManager networkmanager) {
          this.g = LoginListener.EnumProtocolState.HELLO;
-@@ -205,6 +206,15 @@ public class LoginListener implements PacketLoginInListener, ITickable {
+@@ -205,6 +206,14 @@ public class LoginListener implements PacketLoginInListener, ITickable {
              this.g = LoginListener.EnumProtocolState.KEY;
              this.networkManager.sendPacket(new PacketLoginOutEncryptionBegin("", this.server.O().getPublic(), this.e));
          } else {
-+            // Magnet start - Velocity modern forwarding
-+            // Velocity connects to the backend with the client's protocol version and authenticates the player,
-+            // so we ask it for the real player details instead of starting the offline login path.
++            // Magnet start - Velocity 现代转发
++            // 玩家已由代理验证，直接向代理索取玩家信息，不再走离线登录流程。
 +            if (org.mineblock.magnet.MagnetConfig.velocitySupportEnabled) {
 +                this.velocityLoginMessageId = java.util.concurrent.ThreadLocalRandom.current().nextInt();
 +                org.mineblock.magnet.proxy.VelocityProxy.sendLoginPluginRequest(this.networkManager, this.velocityLoginMessageId);
@@ -32,14 +31,16 @@ index 30a2097975868ff80232cd0c32d7d55b0c374aa1..ef74f2639131474515112e715e4e36a0
              // Spigot start
              // Paper start - Cache authenticator threads
              authenticatorPool.execute(new Runnable() {
-@@ -225,6 +235,34 @@ public class LoginListener implements PacketLoginInListener, ITickable {
+@@ -225,6 +234,36 @@ public class LoginListener implements PacketLoginInListener, ITickable {
  
      }
  
-+    // Magnet start - Velocity modern forwarding
++    // Magnet start - Velocity 现代转发
 +    /**
-+     * Applies the player details forwarded by Velocity and continues the login. The forwarded data is
-+     * authoritative, so the offline login path is used without contacting Mojang.
++     * 使用 Velocity 转发的玩家信息继续登录：数据视为可信，不再联系 Mojang 验证。
++     *
++     * @param clientAddress 客户端地址
++     * @param profile 代理转发的玩家档案
 +     */
 +    public void handleVelocityForwarding(java.net.InetSocketAddress clientAddress, GameProfile profile) {
 +        this.networkManager.l = clientAddress;
@@ -47,7 +48,7 @@ index 30a2097975868ff80232cd0c32d7d55b0c374aa1..ef74f2639131474515112e715e4e36a0
 +        this.networkManager.spoofedProfile = profile.getProperties().values().toArray(new com.mojang.authlib.properties.Property[0]);
 +        this.i = new GameProfile((UUID) null, profile.getName());
 +
-+        // Spigot start - same hand off as the offline login path, initUUID() picks up the spoofed data
++        // Spigot start - 与离线登录路径相同，initUUID() 会使用 spoofed 数据
 +        authenticatorPool.execute(new Runnable() {
 +            @Override
 +            public void run() {
@@ -68,27 +69,24 @@ index 30a2097975868ff80232cd0c32d7d55b0c374aa1..ef74f2639131474515112e715e4e36a0
          Validate.validState(this.g == LoginListener.EnumProtocolState.KEY, "Unexpected key packet", new Object[0]);
          PrivateKey privatekey = this.server.O().getPrivate();
 diff --git a/src/main/java/net/minecraft/server/ServerConnection.java b/src/main/java/net/minecraft/server/ServerConnection.java
-index 098c51675e8b0a0543676797d1abc4b6769c30d7..69e51c0b278e3dbbfcfce79bf50fa27a1eb5500e 100644
+index 098c51675e8b0a0543676797d1abc4b6769c30d7..ce307a723b58a1354546fda5902a99d0a49315c3 100644
 --- a/src/main/java/net/minecraft/server/ServerConnection.java
 +++ b/src/main/java/net/minecraft/server/ServerConnection.java
-@@ -148,8 +148,14 @@ public class ServerConnection {
-                         ;
-                     }
-                     if (!disableFlushConsolidation) channel.pipeline().addFirst(new FlushConsolidationHandler()); // Paper
-+                    NetworkManager networkmanager = new NetworkManager(EnumProtocolDirection.SERVERBOUND); // Magnet - created earlier so the Velocity interceptor can reference it
-                     channel.pipeline().addLast("timeout", new ReadTimeoutHandler(30)).addLast("legacy_query", new LegacyPingHandler(ServerConnection.this)).addLast("splitter", new PacketSplitter()).addLast("decoder", new PacketDecoder(EnumProtocolDirection.SERVERBOUND)).addLast("prepender", new PacketPrepender()).addLast("encoder", new PacketEncoder(EnumProtocolDirection.CLIENTBOUND));
--                    NetworkManager networkmanager = new NetworkManager(EnumProtocolDirection.SERVERBOUND);
-+                    // Magnet start - Velocity modern forwarding. Added before ViaVersion injects its handlers, so this
-+                    // ends up in front of via-decoder and can consume the login plugin message answer before it is cancelled.
+@@ -154,6 +154,12 @@ public class ServerConnection {
+                     pending.add(networkmanager); // Paper
+                     channel.pipeline().addLast("packet_handler", networkmanager);
+                     networkmanager.setPacketListener(new HandshakeListener(ServerConnection.this.f, networkmanager));
++                    // Magnet start - Velocity 现代转发
++                    // 在 channel 初始化时加入，ViaVersion（初始化后才注入）位于其后，无法再取消该应答包。
 +                    if (org.mineblock.magnet.MagnetConfig.velocitySupportEnabled) {
 +                        channel.pipeline().addBefore("decoder", org.mineblock.magnet.proxy.VelocityForwardingHandler.HANDLER_NAME, new org.mineblock.magnet.proxy.VelocityForwardingHandler(networkmanager));
 +                    }
 +                    // Magnet end
- 
-                     pending.add(networkmanager); // Paper
-                     channel.pipeline().addLast("packet_handler", networkmanager);
+                 }
+             }).group((EventLoopGroup) lazyinitvar.c()).localAddress(inetaddress, i).bind().syncUninterruptibly());
+         }
 diff --git a/src/main/java/org/mineblock/magnet/MagnetConfig.java b/src/main/java/org/mineblock/magnet/MagnetConfig.java
-index b9301ce0f81dff335df42d60c528dca79e34ca0a..6c5ca038e3534592b601e75a8f75c9f8fccb89bf 100644
+index 095cf45765d69b7789cc3df5d588cdc93e755d71..68dafcfc08fefd9c64901cab1a16bea4e661b2d3 100644
 --- a/src/main/java/org/mineblock/magnet/MagnetConfig.java
 +++ b/src/main/java/org/mineblock/magnet/MagnetConfig.java
 @@ -10,6 +10,8 @@ import java.io.File;
@@ -100,42 +98,49 @@ index b9301ce0f81dff335df42d60c528dca79e34ca0a..6c5ca038e3534592b601e75a8f75c9f8
  import java.util.List;
  import java.util.logging.Level;
  
-@@ -119,4 +121,68 @@ public class MagnetConfig {
+@@ -153,4 +155,75 @@ public class MagnetConfig {
          ensureDefault(key, defaultValue, comment);
          return config.getStringList(key);
      }
 +
++    /**
++     * 是否启用 Velocity 现代玩家信息转发。
++     */
 +    public static boolean velocitySupportEnabled = false;
++
++    /**
++     * Velocity 是否对玩家进行 Mojang 正版验证。
++     */
 +    public static boolean velocitySupportOnlineMode = false;
-+    /** Resolved forwarding secret: {@code settings.velocity-support.secret}, or the contents of the forwarding secret file. */
++
++    /**
++     * 解析后的转发密钥：{@code settings.velocity-support.secret} 的值，或密钥文件的内容。
++     */
 +    public static String velocitySecret = "";
 +    private static String velocitySupportSecret = "";
 +    private static String velocityForwardingSecretFile = "forwarding.secret";
 +
 +    private static void velocitySupport() {
 +        velocitySupportEnabled = getBoolean("settings.velocity-support.enabled", velocitySupportEnabled, """
-+                Whether to enable Velocity's modern player info forwarding.
-+                EXPERIMENTAL - this is a backport of the protocol Paper added in 1.13. Requirements:
-+                  - Velocity must use player-info-forwarding-mode = "modern" with the same secret.
-+                  - This server MUST run with online-mode=false (Velocity authenticates players).
-+                  - This server MUST have ViaVersion installed, or clients newer than 1.12.2 cannot connect.
-+                  - Restrict this server's port to your proxy (firewall); the secret is the only authentication.
-+                Set "verbose: true" at the top of this file to log details about the forwarding handshake.""");
++                是否启用 Velocity 的现代玩家信息转发（实验性）。
++                前提：Velocity 使用 player-info-forwarding-mode = "modern" 并配置相同密钥；
++                本服设置 online-mode=false 并安装 ViaVersion；端口仅对代理开放，密钥是唯一的身份验证手段。
++                设置 "verbose: true" 可输出握手细节。""");
 +
 +        velocitySupportOnlineMode = getBoolean("settings.velocity-support.online-mode", velocitySupportOnlineMode, """
-+                Whether Velocity performs Mojang authentication for players.
-+                Set this to true when your proxy runs with online-mode=true (recommended).""");
++                Velocity 是否对玩家进行 Mojang 正版验证。
++                代理开启 online-mode=true 时应设为 true（推荐）。""");
 +
 +        velocitySupportSecret = getString("settings.velocity-support.secret", velocitySupportSecret, """
-+                The forwarding secret. Must match forwarding.secret on your Velocity proxy.
-+                Leave this empty to read the secret from settings.velocity-support.forwarding-secret-file instead.""");
++                转发密钥，必须与 Velocity 代理的 forwarding.secret 一致。
++                留空时改为从 settings.velocity-support.forwarding-secret-file 读取。""");
 +
 +        velocityForwardingSecretFile = getString("settings.velocity-support.forwarding-secret-file", velocityForwardingSecretFile, """
-+                File to read the forwarding secret from when settings.velocity-support.secret is empty.""");
++                settings.velocity-support.secret 为空时，从此文件读取转发密钥。""");
 +
 +        velocitySecret = resolveSecret(velocitySupportSecret, velocityForwardingSecretFile);
 +
-+        setComment("settings.velocity-support", "Velocity modern player info forwarding (EXPERIMENTAL).");
++        setComment("settings.velocity-support", "Velocity 现代玩家信息转发（实验性）。");
 +
 +        if (velocitySupportEnabled) {
 +            if (velocitySecret.isEmpty()) {
@@ -171,10 +176,10 @@ index b9301ce0f81dff335df42d60c528dca79e34ca0a..6c5ca038e3534592b601e75a8f75c9f8
  }
 diff --git a/src/main/java/org/mineblock/magnet/proxy/VelocityForwardingHandler.java b/src/main/java/org/mineblock/magnet/proxy/VelocityForwardingHandler.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..dd7fb029c083f20df50b6c0bb21380132e3bace2
+index 0000000000000000000000000000000000000000..37a919197fb520c211b9b535fa6de3feb624c9e9
 --- /dev/null
 +++ b/src/main/java/org/mineblock/magnet/proxy/VelocityForwardingHandler.java
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,135 @@
 +package org.mineblock.magnet.proxy;
 +
 +import com.mojang.authlib.GameProfile;
@@ -192,25 +197,30 @@ index 0000000000000000000000000000000000000000..dd7fb029c083f20df50b6c0bb2138013
 +import java.net.SocketAddress;
 +
 +/**
-+ * Magnet - Velocity modern forwarding support.
++ * 1.12.2 的 Velocity 现代转发支持。
 + * <p>
-+ * Sits in the Netty pipeline right before the {@code decoder} (and therefore, because ViaVersion
-+ * injects its own handlers later, right before {@code via-decoder}). It consumes the login plugin
-+ * message answer that Velocity sends back, so ViaVersion never gets a chance to cancel it - which
-+ * is exactly what would otherwise happen, since a 1.12.2 server has no packet to translate
-+ * {@code ServerboundLoginPackets.CUSTOM_QUERY_ANSWER} onto.
++ * 位于 Netty 流水线 {@code decoder} 之前，因而也在 ViaVersion 稍后注入的 {@code via-decoder} 之前；
++ * 它直接取走代理发回的登录插件消息应答，避免 ViaVersion 因无法翻译该包而取消连接。
 + * <p>
-+ * Everything else is passed through untouched. Set {@code verbose: true} in {@code magnet.yml} to
-+ * log what this handler sees; that is the intended way to diagnose a failing handshake.
++ * 其余数据包原样传递。握手异常时把 {@code magnet.yml} 的 {@code verbose} 设为 true 查看日志。
 + */
 +public class VelocityForwardingHandler extends ChannelInboundHandlerAdapter {
 +
++    /**
++     * 本拦截器在 Netty 流水线中的名称。
++     */
 +    public static final String HANDLER_NAME = "magnet_velocity";
-+    /** Packet id of the serverbound login plugin message in the LOGIN state (1.13+). */
++
++    // LOGIN 状态下服务端方向的登录插件消息包 id（1.13+）。
 +    private static final int LOGIN_PLUGIN_RESPONSE_PACKET_ID = 0x02;
 +
 +    private final NetworkManager networkManager;
 +
++    /**
++     * 创建登录阶段拦截器。
++     *
++     * @param networkManager 关联的网络连接，用于读取登录监听器和监听端口
++     */
 +    public VelocityForwardingHandler(NetworkManager networkManager) {
 +        this.networkManager = networkManager;
 +    }
@@ -254,12 +264,11 @@ index 0000000000000000000000000000000000000000..dd7fb029c083f20df50b6c0bb2138013
 +        GameProfile profile = null;
 +        String disconnectReason = null;
 +
-+        // Parse first, release afterwards: Netty's default checkAccessible makes any read on a
-+        // released buffer throw IllegalReferenceCountException.
++        // 先解析再释放：缓冲区释放后任何读取都会抛 IllegalReferenceCountException。
 +        try {
 +            MagnetConfig.log("[Magnet] Got a Velocity login plugin message (" + buf.readableBytes() + " bytes)");
 +
-+            VelocityProxy.readVarInt(buf); // packet id
++            VelocityProxy.readVarInt(buf); // 包 id
 +            final int messageId = VelocityProxy.readVarInt(buf);
 +            final boolean success = buf.readBoolean();
 +            MagnetConfig.log("[Magnet] Velocity answer: message id " + messageId + " (expected "
@@ -308,10 +317,10 @@ index 0000000000000000000000000000000000000000..dd7fb029c083f20df50b6c0bb2138013
 +}
 diff --git a/src/main/java/org/mineblock/magnet/proxy/VelocityProxy.java b/src/main/java/org/mineblock/magnet/proxy/VelocityProxy.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..118a29a99d2eccd6cc029912a4b9f474056409a6
+index 0000000000000000000000000000000000000000..c1a2656be171048fbf34343d8fe1ceedcb2846c6
 --- /dev/null
 +++ b/src/main/java/org/mineblock/magnet/proxy/VelocityProxy.java
-@@ -0,0 +1,189 @@
+@@ -0,0 +1,208 @@
 +package org.mineblock.magnet.proxy;
 +
 +import com.google.common.net.InetAddresses;
@@ -333,31 +342,36 @@ index 0000000000000000000000000000000000000000..118a29a99d2eccd6cc029912a4b9f474
 +import java.util.UUID;
 +
 +/**
-+ * Backport of Paper's Velocity modern player info forwarding (added in 1.13) to 1.12.2.
++ * 把 Paper 1.13 的 Velocity 现代玩家信息转发移植到 1.12.2。
 + * <p>
-+ * Velocity's modern forwarding uses the 1.13 login plugin message packets, which do not exist in
-+ * the 1.12.2 protocol. This implementation talks to the proxy with hand-built packets, and
-+ * {@link VelocityForwardingHandler} consumes the answer before ViaVersion can cancel it.
++ * 1.12.2 没有登录插件消息包，这里手工拼包与代理通信，由 {@link VelocityForwardingHandler}
++ * 在 ViaVersion 取消该包之前取走应答，因此本服必须安装 ViaVersion。
 + * <p>
-+ * The forwarding payload is {@code [32 byte HMAC-SHA256 signature][VarInt version]
-+ * [String address][UUID][String name][properties]}.
++ * 转发数据格式：{@code [32 字节 HMAC-SHA256 签名][VarInt 版本][String 地址][UUID][String 名称][属性]}。
 + */
 +public class VelocityProxy {
 +
-+    /** Login plugin message channel Velocity answers on. */
++    /**
++     * Velocity 应答的登录插件消息频道。
++     */
 +    public static final String CHANNEL = "velocity:player_info";
-+    /** The only forwarding data version this server understands. */
++
++    /**
++     * 本服唯一支持的转发数据版本。
++     */
 +    public static final int SUPPORTED_FORWARDING_VERSION = 1;
-+    /** Packet id of the clientbound login plugin message in the LOGIN state (1.13+). */
++
++    // LOGIN 状态下客户端方向的登录插件消息包 id（1.13+）。
 +    private static final int LOGIN_PLUGIN_REQUEST_PACKET_ID = 0x04;
 +
 +    /**
-+     * Asks the proxy for the player's real details.
++     * 请求代理提供玩家的真实信息。
 +     * <p>
-+     * The packet is framed by hand and written straight into the pipeline from the interceptor's
-+     * context. That skips the vanilla encoder (the packet id is not registered in the 1.12.2
-+     * {@code EnumProtocol}) as well as ViaVersion's encoder, which would otherwise be handed a
-+     * packet it cannot translate.
++     * 数据包直接从拦截器的 context 写入流水线，绕过原版编码器（1.12.2 的 {@code EnumProtocol}
++     * 没有注册该包 id）以及无法翻译该包的 ViaVersion 编码器。
++     *
++     * @param networkManager 与玩家连接对应的网络管理器
++     * @param messageId 本次登录插件请求的消息 id
 +     */
 +    public static void sendLoginPluginRequest(NetworkManager networkManager, int messageId) {
 +        final io.netty.channel.ChannelHandlerContext ctx =
@@ -388,8 +402,10 @@ index 0000000000000000000000000000000000000000..118a29a99d2eccd6cc029912a4b9f474
 +    }
 +
 +    /**
-+     * Verifies the HMAC-SHA256 signature at the start of {@code buf} and advances the reader index
-+     * past it, leaving the forwarded data in the buffer.
++     * 校验缓冲区开头的 HMAC-SHA256 签名，并把读取位置移到签名之后，转发数据留在缓冲区中。
++     *
++     * @param buf 待校验的缓冲区，读取位置需指向签名开头
++     * @return 签名是否有效
 +     */
 +    public static boolean checkIntegrity(ByteBuf buf) {
 +        final String secret = MagnetConfig.velocitySecret;
@@ -435,10 +451,22 @@ index 0000000000000000000000000000000000000000..118a29a99d2eccd6cc029912a4b9f474
 +        return builder.toString();
 +    }
 +
++    /**
++     * 读取转发数据中的客户端地址。
++     *
++     * @param buf 转发数据缓冲区
++     * @return 客户端地址
++     */
 +    public static InetAddress readAddress(ByteBuf buf) {
 +        return InetAddresses.forString(readString(buf));
 +    }
 +
++    /**
++     * 读取转发数据中的玩家档案，包含皮肤等属性。
++     *
++     * @param buf 转发数据缓冲区
++     * @return 玩家档案
++     */
 +    public static GameProfile createProfile(ByteBuf buf) {
 +        final GameProfile profile = new GameProfile(readUuid(buf), readString(buf));
 +        profile.getProperties().putAll(readProperties(buf));
