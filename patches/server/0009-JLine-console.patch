@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Mon, 19 Oct 2026 11:36:47 +0800
+Subject: [PATCH] JLine console
+
+
+diff --git a/pom.xml b/pom.xml
+index bbe9eae1e87fc6b3e0b34bf7b9e46c882480aa2b..c918a9ae26f31c3b828120ca40fcf243c7e39117 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -74,6 +74,13 @@
+             <artifactId>terminalconsoleappender</artifactId>
+             <version>1.3.0</version>
+         </dependency>
++        <!-- Magnet - 使用 JLine 的 JNA 终端后端，启用控制台颜色与 Ctrl+C 安全关闭 -->
++        <dependency>
++            <groupId>org.jline</groupId>
++            <artifactId>jline-terminal-jna</artifactId>
++            <version>3.20.0</version>
++            <scope>runtime</scope>
++        </dependency>
+ 
+         <!--
+           Required to add the missing Log4j2Plugins.dat file from log4j-core
