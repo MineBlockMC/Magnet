@@ -5,7 +5,7 @@ Subject: [PATCH] Add getMinecraftVersion to Bukkit
 
 
 diff --git a/src/main/java/org/bukkit/Bukkit.java b/src/main/java/org/bukkit/Bukkit.java
-index 99295068b9706e58884b24d2a0fa6585573f094a..ba57f8df83e25fbd70e85aa09419976f53a8dd60 100644
+index fe4f5b1e162e1bbd82817e91208c113bf9676612..929c731575a33dbe686b391d4444a552ca25cb64 100644
 --- a/src/main/java/org/bukkit/Bukkit.java
 +++ b/src/main/java/org/bukkit/Bukkit.java
 @@ -110,6 +110,17 @@ public final class Bukkit {
@@ -27,10 +27,10 @@ index 99295068b9706e58884b24d2a0fa6585573f094a..ba57f8df83e25fbd70e85aa09419976f
       * Gets a view of all currently logged in players. This {@linkplain
       * Collections#unmodifiableCollection(Collection) view} is a reused
 diff --git a/src/main/java/org/bukkit/Server.java b/src/main/java/org/bukkit/Server.java
-index dce6bde00847d56e9898f0610d48654bb87a77ef..f301c3e7087ce209c0b5b315f01b384905f14977 100644
+index 8e2ca3529b5c93d47aa52e1fa66cd6bc8a49eacd..b2e9df4371b0871451305a71e082cf7d29d41a11 100644
 --- a/src/main/java/org/bukkit/Server.java
 +++ b/src/main/java/org/bukkit/Server.java
-@@ -95,6 +95,15 @@ public interface Server extends PluginMessageRecipient {
+@@ -95,6 +95,15 @@ public interface Server extends PluginMessageRecipient, ForwardingAudience { //
       */
      public String getBukkitVersion();
  

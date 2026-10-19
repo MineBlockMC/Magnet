@@ -5,10 +5,10 @@ Subject: [PATCH] Implement getMinecraftVersion in CraftServer
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-index 02b7c90db111b9fb0363f48b0e9242cf7d2b35fb..601eac4666ffacbf25d06c64761214921ffc5262 100644
+index 9d13e3ac1af393dc314e3aa445a8a21f12b62879..3d0554c78af7f1d6fa9f8b7241113ba4d88d6301 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-@@ -420,6 +420,13 @@ public final class CraftServer implements Server {
+@@ -415,6 +415,13 @@ public final class CraftServer implements Server {
          return bukkitVersion;
      }
  

@@ -77,28 +77,77 @@ index e0b43f91c5063f8e113ad566bbc61a17b058f155..870d5b0131a8d5c4d833e72dffa29e87
          <dependency>
              <groupId>org.slf4j</groupId>
 diff --git a/src/main/java/org/bukkit/Bukkit.java b/src/main/java/org/bukkit/Bukkit.java
-index 682d2bbf2831e47285f625a41bc0f353c346db7a..99295068b9706e58884b24d2a0fa6585573f094a 100644
+index 682d2bbf2831e47285f625a41bc0f353c346db7a..fe4f5b1e162e1bbd82817e91208c113bf9676612 100644
 --- a/src/main/java/org/bukkit/Bukkit.java
 +++ b/src/main/java/org/bukkit/Bukkit.java
-@@ -1270,4 +1270,16 @@ public final class Bukkit {
+@@ -726,6 +726,59 @@ public final class Bukkit {
+         return server.broadcast(message, permission);
+     }
+ 
++    // Magnet start
++    /**
++     * 向所有在线玩家广播组件消息。
++     *
++     * @param message 消息组件
++     * @return 接收人数
++     */
++    public static int broadcast(net.kyori.adventure.text.Component message) {
++        return server.broadcast(message);
++    }
++
++    /**
++     * 向所有在线玩家广播组件或 Builder。
++     *
++     * @param message 消息组件或 Builder
++     * @return 接收人数
++     */
++    public static int broadcast(net.kyori.adventure.text.ComponentLike message) {
++        return server.broadcast(message);
++    }
++
++    /**
++     * 向具有指定权限的接收者广播组件消息。
++     *
++     * @param message 消息组件
++     * @param permission 所需权限
++     * @return 接收人数
++     */
++    public static int broadcast(net.kyori.adventure.text.Component message, String permission) {
++        return server.broadcast(message, permission);
++    }
++
++    /**
++     * 向具有指定权限的接收者广播组件或 Builder。
++     *
++     * @param message 消息组件或 Builder
++     * @param permission 所需权限
++     * @return 接收人数
++     */
++    public static int broadcast(net.kyori.adventure.text.ComponentLike message, String permission) {
++        return server.broadcast(message, permission);
++    }
++
++    /**
++     * 向服务端所有 audience 发送组件或 Builder。
++     *
++     * @param messages 消息组件或 Builder
++     */
++    public static void sendMessage(net.kyori.adventure.text.ComponentLike... messages) {
++        server.sendMessage(messages);
++    }
++    // Magnet end
++
+     /**
+      * Gets the player by the given name, regardless if they are offline or
+      * online.
+@@ -1270,4 +1323,5 @@ public final class Bukkit {
      {
          return server.spigot();
      }
 +
-+    // Magnet start
-+    /**
-+     * 获取服务端级 Adventure 组件入口。
-+     *
-+     * @return 服务端组件入口
-+     */
-+    public static Server.Magnet magnet()
-+    {
-+        return server.magnet();
-+    }
-+    // Magnet end
  }
 diff --git a/src/main/java/org/bukkit/Server.java b/src/main/java/org/bukkit/Server.java
-index fc294a94d9c33bc256fdaee1d3a91eeeeaedc6a6..dce6bde00847d56e9898f0610d48654bb87a77ef 100644
+index fc294a94d9c33bc256fdaee1d3a91eeeeaedc6a6..8e2ca3529b5c93d47aa52e1fa66cd6bc8a49eacd 100644
 --- a/src/main/java/org/bukkit/Server.java
 +++ b/src/main/java/org/bukkit/Server.java
 @@ -37,6 +37,11 @@ import org.bukkit.plugin.messaging.PluginMessageRecipient;
@@ -106,189 +155,87 @@ index fc294a94d9c33bc256fdaee1d3a91eeeeaedc6a6..dce6bde00847d56e9898f0610d48654b
  import org.bukkit.scoreboard.ScoreboardManager;
  import org.bukkit.util.CachedServerIcon;
 +// Magnet start
-+import net.kyori.adventure.audience.Audience;
 +import net.kyori.adventure.audience.ForwardingAudience;
++import net.kyori.adventure.text.Component;
 +import net.kyori.adventure.text.ComponentLike;
 +// Magnet end
  
  import com.google.common.collect.ImmutableList;
  import org.bukkit.advancement.Advancement;
-@@ -1050,6 +1055,77 @@ public interface Server extends PluginMessageRecipient {
-     Spigot spigot();
-     // Spigot end
+@@ -51,7 +56,7 @@ import javax.annotation.Nonnull; // Paper
+ /**
+  * Represents a server implementation.
+  */
+-public interface Server extends PluginMessageRecipient {
++public interface Server extends PluginMessageRecipient, ForwardingAudience { // Magnet - Adventure
+ 
+     /**
+      * Used for all administrative messages, such as an operator using a
+@@ -594,6 +599,59 @@ public interface Server extends PluginMessageRecipient {
+      */
+     public int broadcast(String message, String permission);
  
 +    // Magnet start
 +    /**
-+     * 获取服务端级 Adventure 组件入口。
++     * 向所有在线玩家广播组件消息。
 +     *
-+     * @return 转发到控制台与在线玩家的组件入口
++     * @param message 消息组件
++     * @return 接收人数
 +     */
-+    default Magnet magnet() {
-+        return new Magnet(this);
++    default int broadcast(Component message) {
++        return broadcast(message, BROADCAST_CHANNEL_USERS);
 +    }
 +
 +    /**
-+     * 服务端级 Adventure 组件入口。
++     * 向所有在线玩家广播组件或 Builder。
++     *
++     * @param message 消息组件或 Builder
++     * @return 接收人数
 +     */
-+    class Magnet implements ForwardingAudience {
-+        private final Server server;
++    default int broadcast(ComponentLike message) {
++        return broadcast(message.asComponent());
++    }
 +
-+        protected Magnet(Server server) {
-+            this.server = server;
-+        }
++    /**
++     * 向具有指定权限的接收者广播组件消息。
++     *
++     * @param message 消息组件
++     * @param permission 所需权限
++     * @return 接收人数
++     */
++    int broadcast(Component message, String permission);
 +
-+        @Override
-+        public Iterable<? extends Audience> audiences() {
-+            java.util.List<Audience> audiences = new java.util.ArrayList<>();
-+            audiences.add(server.getConsoleSender().magnet());
-+            for (Player player : server.getOnlinePlayers()) {
-+                audiences.add(player.magnet());
-+            }
-+            return audiences;
-+        }
++    /**
++     * 向具有指定权限的接收者广播组件或 Builder。
++     *
++     * @param message 消息组件或 Builder
++     * @param permission 所需权限
++     * @return 接收人数
++     */
++    default int broadcast(ComponentLike message, String permission) {
++        return broadcast(message.asComponent(), permission);
++    }
 +
-+        /**
-+         * 依次向服务端所有 audience 发送组件或 Builder。
-+         *
-+         * @param messages 消息组件或 Builder
-+         */
-+        public void sendMessage(ComponentLike... messages) {
-+            for (ComponentLike message : messages) {
-+                sendMessage(message);
-+            }
-+        }
-+
-+        /**
-+         * 向所有在线玩家广播组件消息。
-+         *
-+         * @param message 消息组件
-+         * @return 接收人数
-+         */
-+        public int broadcast(ComponentLike message) {
-+            return broadcast(message, Server.BROADCAST_CHANNEL_USERS);
-+        }
-+
-+        /**
-+         * 向具有指定权限的在线玩家广播组件消息。
-+         *
-+         * @param message 消息组件
-+         * @param permission 所需权限
-+         * @return 接收人数
-+         */
-+        public int broadcast(ComponentLike message, String permission) {
-+            int count = 0;
-+            for (Player player : server.getOnlinePlayers()) {
-+                if (player.hasPermission(permission)) {
-+                    player.magnet().sendMessage(message);
-+                    count++;
-+                }
-+            }
-+            return count;
++    /**
++     * 依次向服务端所有 audience 发送组件或 Builder。
++     *
++     * @param messages 消息组件或 Builder
++     */
++    default void sendMessage(ComponentLike... messages) {
++        for (ComponentLike message : messages) {
++            sendMessage(message.asComponent());
 +        }
 +    }
 +    // Magnet end
 +
-     void reloadPermissions(); // Paper
- 
-     boolean reloadCommandAliases(); // Paper
-diff --git a/src/main/java/org/bukkit/WorldCreator.java b/src/main/java/org/bukkit/WorldCreator.java
-index 53980fdbc60d2bae5eaa14fdc26d629b813a1bc8..47299b58882871fd5e7025c46cbbe738a6c5837c 100644
---- a/src/main/java/org/bukkit/WorldCreator.java
-+++ b/src/main/java/org/bukkit/WorldCreator.java
-@@ -4,6 +4,9 @@ import java.util.Random;
- import org.bukkit.command.CommandSender;
- import org.bukkit.generator.ChunkGenerator;
- import org.bukkit.plugin.Plugin;
-+// Magnet start
-+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-+// Magnet end
- 
- /**
-  * Represents various types of options that may be used to create a world.
-@@ -304,9 +307,9 @@ public class WorldCreator {
-             Plugin plugin = Bukkit.getPluginManager().getPlugin(split[0]);
- 
-             if (plugin == null) {
--                output.sendMessage("Could not set generator for world '" + world + "': Plugin '" + split[0] + "' does not exist");
-+                output.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize("Could not set generator for world '" + world + "': Plugin '" + split[0] + "' does not exist"));
-             } else if (!plugin.isEnabled()) {
--                output.sendMessage("Could not set generator for world '" + world + "': Plugin '" + plugin.getDescription().getFullName() + "' is not enabled");
-+                output.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize("Could not set generator for world '" + world + "': Plugin '" + plugin.getDescription().getFullName() + "' is not enabled"));
-             } else {
-                 result = plugin.getDefaultWorldGenerator(world, id);
-             }
-diff --git a/src/main/java/org/bukkit/command/Command.java b/src/main/java/org/bukkit/command/Command.java
-index d00bad28e6c2866b84d9b1d2e01dfeedf8a8f490..8816f0a3c83fd6c019754196b75826b0eba5f809 100644
---- a/src/main/java/org/bukkit/command/Command.java
-+++ b/src/main/java/org/bukkit/command/Command.java
-@@ -17,6 +17,11 @@ import org.bukkit.plugin.PluginDescriptionFile;
- import org.bukkit.util.StringUtil;
- 
- import com.google.common.collect.ImmutableList;
-+// Magnet start
-+import net.kyori.adventure.text.Component;
-+import net.kyori.adventure.text.format.NamedTextColor;
-+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-+// Magnet end
- 
- /**
-  * Represents a Command, which executes various tasks upon user input
-@@ -177,10 +182,10 @@ public abstract class Command {
-         }
- 
-         if (permissionMessage == null) {
--            target.sendMessage(ChatColor.RED + "I'm sorry, but you do not have permission to perform this command. Please contact the server administrators if you believe that this is in error.");
-+            target.magnet().sendMessage(Component.text("I'm sorry, but you do not have permission to perform this command. Please contact the server administrators if you believe that this is in error.", NamedTextColor.RED));
-         } else if (permissionMessage.length() != 0) {
-             for (String line : permissionMessage.replace("<permission>", permission).split("\n")) {
--                target.sendMessage(line);
-+                target.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(line));
-             }
-         }
- 
-@@ -390,14 +395,14 @@ public abstract class Command {
-             BlockCommandSender blockCommandSender = (BlockCommandSender) source;
- 
-             if (blockCommandSender.getBlock().getWorld().getGameRuleValue("commandBlockOutput").equalsIgnoreCase("false")) {
--                Bukkit.getConsoleSender().sendMessage(result);
-+                Bukkit.getConsoleSender().magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(result));
-                 return;
-             }
-         } else if (source instanceof CommandMinecart) {
-             CommandMinecart commandMinecart = (CommandMinecart) source;
- 
-             if (commandMinecart.getWorld().getGameRuleValue("commandBlockOutput").equalsIgnoreCase("false")) {
--                Bukkit.getConsoleSender().sendMessage(result);
-+                Bukkit.getConsoleSender().magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(result));
-                 return;
-             }
-         }
-@@ -406,7 +411,7 @@ public abstract class Command {
-         String colored = ChatColor.GRAY + "" + ChatColor.ITALIC + "[" + result + ChatColor.GRAY + ChatColor.ITALIC + "]";
- 
-         if (sendToSource && !(source instanceof ConsoleCommandSender)) {
--            source.sendMessage(message);
-+            source.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(message));
-         }
- 
-         for (Permissible user : users) {
-@@ -414,9 +419,9 @@ public abstract class Command {
-                 CommandSender target = (CommandSender) user;
- 
-                 if (target instanceof ConsoleCommandSender) {
--                    target.sendMessage(result);
-+                    target.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(result));
-                 } else if (target != source) {
--                    target.sendMessage(colored);
-+                    target.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(colored));
-                 }
-             }
-         }
+     /**
+      * Gets the player by the given name, regardless if they are offline or
+      * online.
 diff --git a/src/main/java/org/bukkit/command/CommandSender.java b/src/main/java/org/bukkit/command/CommandSender.java
-index fcb03b83042c730cf2fa6daa982f017ba021652c..aedc7840c9c48ccc0d60e05c2cf58947b1065516 100644
+index fcb03b83042c730cf2fa6daa982f017ba021652c..c6f9d218c6779db1f90112507c9a3074ea24d230 100644
 --- a/src/main/java/org/bukkit/command/CommandSender.java
 +++ b/src/main/java/org/bukkit/command/CommandSender.java
-@@ -2,6 +2,17 @@ package org.bukkit.command;
+@@ -2,8 +2,16 @@ package org.bukkit.command;
  
  import org.bukkit.Server;
  import org.bukkit.permissions.Permissible;
@@ -298,505 +245,467 @@ index fcb03b83042c730cf2fa6daa982f017ba021652c..aedc7840c9c48ccc0d60e05c2cf58947
 +import net.kyori.adventure.chat.SignedMessage;
 +import net.kyori.adventure.text.Component;
 +import net.kyori.adventure.text.ComponentLike;
-+import net.kyori.adventure.text.TextReplacementConfig;
-+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
-+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
++import org.mineblock.magnet.adventure.MagnetText;
 +// Magnet end
  
- public interface CommandSender extends Permissible {
+-public interface CommandSender extends Permissible {
++public interface CommandSender extends Audience, Permissible { // Magnet - Adventure
  
-@@ -59,6 +70,85 @@ public interface CommandSender extends Permissible {
+     /**
+      * Sends this sender a message
+@@ -59,6 +67,50 @@ public interface CommandSender extends Permissible {
      Spigot spigot();
      // Spigot end
  
 +    // Magnet start
 +    /**
-+     * 获取 Adventure 组件发送入口。
++     * 以 Adventure 组件发送消息；不支持组件的实现回退为 legacy 文本。
 +     *
-+     * @return 绑定此发送者的组件入口
++     * @param message 消息组件
 +     */
-+    default Magnet magnet() {
-+        return new Magnet(this);
++    @Override
++    default void sendMessage(Component message) {
++        sendMessage(MagnetText.toLegacy(message));
++    }
++
++    @Override
++    default void sendMessage(ComponentLike message) {
++        sendMessage(message.asComponent());
 +    }
 +
 +    /**
-+     * 绑定到 {@link CommandSender} 的 Adventure 组件入口。
++     * 依次发送多个组件或 Builder。
++     *
++     * @param messages 消息组件或 Builder
 +     */
-+    class Magnet implements Audience {
-+        private static final GsonComponentSerializer JSON = GsonComponentSerializer.colorDownsamplingGson();
-+        private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacySection();
-+
-+        protected final CommandSender sender;
-+
-+        protected Magnet(CommandSender sender) {
-+            this.sender = sender;
-+        }
-+
-+        /**
-+         * 以 Adventure 组件形式发送消息。
-+         *
-+         * @param message 消息组件
-+         */
-+        @Override
-+        public void sendMessage(Component message) {
-+            sender.sendMessage(toLegacy(withoutLegacyFormatting(message)));
-+        }
-+
-+        @Override
-+        public void sendMessage(ComponentLike message) {
++    default void sendMessage(ComponentLike... messages) {
++        for (ComponentLike message : messages) {
 +            sendMessage(message.asComponent());
 +        }
++    }
 +
-+        /**
-+         * 依次发送多个 Adventure 组件或 Builder。
-+         *
-+         * @param messages 消息组件或 Builder
-+         */
-+        public void sendMessage(ComponentLike... messages) {
-+            for (ComponentLike message : messages) {
-+                sendMessage(message.asComponent());
-+            }
-+        }
++    @Override
++    default void sendMessage(Component message, ChatType.Bound boundChatType) {
++        sendMessage(message);
++    }
 +
-+        @Override
-+        public void sendMessage(Component message, ChatType.Bound boundChatType) {
-+            sendMessage(message);
-+        }
++    @Override
++    default void sendMessage(ComponentLike message, ChatType.Bound boundChatType) {
++        sendMessage(message.asComponent());
++    }
 +
-+        @Override
-+        public void sendMessage(ComponentLike message, ChatType.Bound boundChatType) {
-+            sendMessage(message.asComponent());
-+        }
-+
-+        @Override
-+        public void sendMessage(SignedMessage signedMessage, ChatType.Bound boundChatType) {
-+            Component content = signedMessage.unsignedContent();
-+            sendMessage(content == null ? Component.text(signedMessage.message()) : content);
-+        }
-+
-+        private static Component withoutLegacyFormatting(Component message) {
-+            return message.replaceText(TextReplacementConfig.builder().matchLiteral("\u00a7").replacement("").build());
-+        }
-+
-+        private static String toLegacy(Component message) {
-+            try {
-+                return LEGACY.serialize(JSON.deserialize(JSON.serialize(message)));
-+            } catch (RuntimeException ex) {
-+                return LEGACY.serialize(Component.text(PlainTextComponentSerializer.plainText().serialize(message)));
-+            }
-+        }
++    @Override
++    default void sendMessage(SignedMessage signedMessage, ChatType.Bound boundChatType) {
++        Component content = signedMessage.unsignedContent();
++        sendMessage(content == null ? Component.text(signedMessage.message()) : content);
 +    }
 +    // Magnet end
 +
      // Paper start
      /**
       * Sends the component to the sender
-diff --git a/src/main/java/org/bukkit/command/FormattedCommandAlias.java b/src/main/java/org/bukkit/command/FormattedCommandAlias.java
-index f8e567350650d5b1e68dcf41cb9ef0c217139723..6fccb3a9b6160eb1462d39c85f91957611a57c23 100644
---- a/src/main/java/org/bukkit/command/FormattedCommandAlias.java
-+++ b/src/main/java/org/bukkit/command/FormattedCommandAlias.java
-@@ -6,6 +6,11 @@ import java.util.regex.Matcher;
- import java.util.regex.Pattern;
- 
- import org.bukkit.Bukkit;
+diff --git a/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java b/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java
+index ae5631144bba24712bfa459fd7d3d8aecf9c04e5..5fce16c5cc686157b46697d0849afaf3f2365f1e 100644
+--- a/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java
++++ b/src/main/java/org/bukkit/event/server/BroadcastMessageEvent.java
+@@ -4,6 +4,10 @@ import java.util.Set;
+ import org.bukkit.command.CommandSender;
+ import org.bukkit.event.Cancellable;
+ import org.bukkit.event.HandlerList;
 +// Magnet start
 +import net.kyori.adventure.text.Component;
-+import net.kyori.adventure.text.format.NamedTextColor;
-+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-+// Magnet end
- 
- public class FormattedCommandAlias extends Command {
-     private final String[] formatStrings;
-@@ -24,9 +29,9 @@ public class FormattedCommandAlias extends Command {
-                 commands.add(buildCommand(sender, formatString, args)); // Paper
-             } catch (Throwable throwable) {
-                 if (throwable instanceof IllegalArgumentException) {
--                    sender.sendMessage(throwable.getMessage());
-+                    sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(String.valueOf(throwable.getMessage())));
-                 } else {
--                    sender.sendMessage(org.bukkit.ChatColor.RED + "An internal error occurred while attempting to perform this command");
-+                    sender.magnet().sendMessage(Component.text("An internal error occurred while attempting to perform this command", NamedTextColor.RED));
-                 }
-                 return false;
-             }
-diff --git a/src/main/java/org/bukkit/command/PluginCommand.java b/src/main/java/org/bukkit/command/PluginCommand.java
-index c660c178cad6495806c673cb5942df561a04b5e8..e35858bb1206b9b604cfcabc34da5cd58c328801 100644
---- a/src/main/java/org/bukkit/command/PluginCommand.java
-+++ b/src/main/java/org/bukkit/command/PluginCommand.java
-@@ -4,6 +4,9 @@ import java.util.List;
- 
- import org.apache.commons.lang.Validate;
- import org.bukkit.plugin.Plugin;
-+// Magnet start
-+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
++import org.mineblock.magnet.adventure.MagnetText;
 +// Magnet end
  
  /**
-  * Represents a {@link Command} belonging to a plugin
-@@ -48,7 +51,7 @@ public final class PluginCommand extends Command implements PluginIdentifiableCo
+  * Event triggered for server broadcast messages such as from
+@@ -12,14 +16,22 @@ import org.bukkit.event.HandlerList;
+ public class BroadcastMessageEvent extends ServerEvent implements Cancellable {
  
-         if (!success && usageMessage.length() > 0) {
-             for (String line : usageMessage.replace("<command>", commandLabel).split("\n")) {
--                sender.sendMessage(line);
-+                sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(line));
-             }
-         }
+     private static final HandlerList handlers = new HandlerList();
+-    private String message;
++    // Magnet start
++    private Component message;
++    // Magnet end
+     private final Set<CommandSender> recipients;
+     private boolean cancelled = false;
  
-diff --git a/src/main/java/org/bukkit/command/defaults/HelpCommand.java b/src/main/java/org/bukkit/command/defaults/HelpCommand.java
-index a8f8a19bfd7510dc586c7e061239b040d9865c22..3a41837249cab4af2b9756be842869fc608c4fed 100644
---- a/src/main/java/org/bukkit/command/defaults/HelpCommand.java
-+++ b/src/main/java/org/bukkit/command/defaults/HelpCommand.java
-@@ -23,6 +23,11 @@ import org.bukkit.help.IndexHelpTopic;
- import org.bukkit.util.ChatPaginator;
- 
- import com.google.common.collect.ImmutableList;
-+// Magnet start
-+import net.kyori.adventure.text.Component;
-+import net.kyori.adventure.text.format.NamedTextColor;
-+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-+// Magnet end
- 
- public class HelpCommand extends BukkitCommand {
-     public HelpCommand() {
-@@ -80,7 +85,7 @@ public class HelpCommand extends BukkitCommand {
-         }
- 
-         if (topic == null || !topic.canSee(sender)) {
--            sender.sendMessage(ChatColor.RED + "No help for " + command);
-+            sender.magnet().sendMessage(Component.text("No help for " + command, NamedTextColor.RED));
-             return true;
-         }
- 
-@@ -104,9 +109,14 @@ public class HelpCommand extends BukkitCommand {
-         for (int i = header.length(); i < ChatPaginator.GUARANTEED_NO_WRAP_CHAT_PAGE_WIDTH; i++) {
-             header.append("-");
-         }
--        sender.sendMessage(header.toString());
-+        sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(header.toString()));
- 
--        sender.sendMessage(page.getLines());
-+        String[] lines = page.getLines();
-+        Component[] components = new Component[lines.length];
-+        for (int i = 0; i < lines.length; i++) {
-+            components[i] = LegacyComponentSerializer.legacySection().deserialize(lines[i]);
-+        }
-+        sender.magnet().sendMessage(components);
- 
-         return true;
+     public BroadcastMessageEvent(String message, Set<CommandSender> recipients) {
++        this(MagnetText.fromLegacy(message), recipients); // Magnet - Adventure
++    }
++
++    // Magnet start
++    public BroadcastMessageEvent(Component message, Set<CommandSender> recipients) {
+         this.message = message;
+         this.recipients = recipients;
      }
-diff --git a/src/main/java/org/bukkit/command/defaults/PluginsCommand.java b/src/main/java/org/bukkit/command/defaults/PluginsCommand.java
-index b1d384e820137d5556db00e18e773c17b78f4158..ebcfed1df6e17b10d6f0c7568e3c12655e693722 100644
---- a/src/main/java/org/bukkit/command/defaults/PluginsCommand.java
-+++ b/src/main/java/org/bukkit/command/defaults/PluginsCommand.java
-@@ -10,6 +10,9 @@ import org.bukkit.Bukkit;
- import org.bukkit.ChatColor;
- import org.bukkit.command.CommandSender;
- import org.bukkit.plugin.Plugin;
-+// Magnet start
-+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-+// Magnet end
++    // Magnet end
  
- public class PluginsCommand extends BukkitCommand {
-     public PluginsCommand(String name) {
-@@ -24,7 +27,7 @@ public class PluginsCommand extends BukkitCommand {
-     public boolean execute(CommandSender sender, String currentAlias, String[] args) {
-         if (!testPermission(sender)) return true;
- 
--        sender.sendMessage("Plugins " + getPluginList());
-+        sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize("Plugins " + getPluginList()));
-         return true;
+     /**
+      * Get the message to broadcast.
+@@ -27,16 +39,36 @@ public class BroadcastMessageEvent extends ServerEvent implements Cancellable {
+      * @return Message to broadcast
+      */
+     public String getMessage() {
++        return MagnetText.toLegacy(message); // Magnet - Adventure
++    }
++
++    // Magnet start
++    /**
++     * 获取广播组件。
++     *
++     * @return 广播组件
++     */
++    public Component message() {
+         return message;
      }
  
-diff --git a/src/main/java/org/bukkit/command/defaults/VersionCommand.java b/src/main/java/org/bukkit/command/defaults/VersionCommand.java
-index fbabdbfa94a8ad89e7bf58a7247a2c12f12c9dce..9d33b3017603b48d023395f30be181d32234ab53 100644
---- a/src/main/java/org/bukkit/command/defaults/VersionCommand.java
-+++ b/src/main/java/org/bukkit/command/defaults/VersionCommand.java
-@@ -9,6 +9,10 @@ import org.bukkit.command.CommandSender;
- import org.bukkit.plugin.Plugin;
- import org.bukkit.plugin.PluginDescriptionFile;
- import org.bukkit.util.StringUtil;
-+// Magnet start
-+import net.kyori.adventure.text.Component;
-+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-+// Magnet end
- 
- import java.util.*;
- import java.util.concurrent.locks.ReentrantLock;
-@@ -29,7 +33,7 @@ public class VersionCommand extends BukkitCommand {
-         if (!testPermission(sender)) return true;
- 
-         if (args.length == 0) {
--            sender.sendMessage("This server is running " + Bukkit.getName() + " version " + Bukkit.getVersion() + " (Implementing API version " + Bukkit.getBukkitVersion() + ")");
-+            sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize("This server is running " + Bukkit.getName() + " version " + Bukkit.getVersion() + " (Implementing API version " + Bukkit.getBukkitVersion() + ")"));
-             tellHistory(sender); // Paper
-             //sendVersion(sender); // Paper - We'll say when, thanks // Magnet - 暂时关闭版本检查
-         } else {
-@@ -60,8 +64,8 @@ public class VersionCommand extends BukkitCommand {
-             }
- 
-             if (!found) {
--                sender.sendMessage("This server is not running any plugin by that name.");
--                sender.sendMessage("Use /plugins to get a list of plugins.");
-+                sender.magnet().sendMessage(Component.text("This server is not running any plugin by that name."));
-+                sender.magnet().sendMessage(Component.text("Use /plugins to get a list of plugins."));
-             }
-         }
-         return true;
-@@ -79,27 +83,27 @@ public class VersionCommand extends BukkitCommand {
-             return;
-         }
- 
--        sender.sendMessage("Previous version: " + oldVersion);
-+        sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize("Previous version: " + oldVersion));
++    /**
++     * 设置广播组件。
++     *
++     * @param message 广播组件
++     */
++    public void message(Component message) {
++        this.message = message;
++    }
++    // Magnet end
++
+     /**
+      * Set the message to broadcast.
+      *
+      * @param message New message to broadcast
+      */
+     public void setMessage(String message) {
+-        this.message = message;
++        this.message = MagnetText.fromLegacy(message); // Magnet - Adventure
      }
-     // Paper end
  
-     private void describeToSender(Plugin plugin, CommandSender sender) {
-         PluginDescriptionFile desc = plugin.getDescription();
--        sender.sendMessage(ChatColor.GREEN + desc.getName() + ChatColor.WHITE + " version " + ChatColor.GREEN + desc.getVersion());
-+        sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(ChatColor.GREEN + desc.getName() + ChatColor.WHITE + " version " + ChatColor.GREEN + desc.getVersion()));
- 
-         if (desc.getDescription() != null) {
--            sender.sendMessage(desc.getDescription());
-+            sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(desc.getDescription()));
-         }
- 
-         if (desc.getWebsite() != null) {
--            sender.sendMessage("Website: " + ChatColor.GREEN + desc.getWebsite());
-+            sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize("Website: " + ChatColor.GREEN + desc.getWebsite()));
-         }
- 
-         if (!desc.getAuthors().isEmpty()) {
-             if (desc.getAuthors().size() == 1) {
--                sender.sendMessage("Author: " + getAuthors(desc));
-+                sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize("Author: " + getAuthors(desc)));
-             } else {
--                sender.sendMessage("Authors: " + getAuthors(desc));
-+                sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize("Authors: " + getAuthors(desc)));
-             }
-         }
-     }
-@@ -158,18 +162,18 @@ public class VersionCommand extends BukkitCommand {
-                 lastCheck = System.currentTimeMillis();
-                 hasVersion = false;
-             } else {
--                sender.sendMessage(versionMessage);
-+                sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(versionMessage));
-                 return;
-             }
-         }
-         versionLock.lock();
-         try {
-             if (hasVersion) {
--                sender.sendMessage(versionMessage);
-+                sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(versionMessage));
-                 return;
-             }
-             versionWaiters.add(sender);
--            sender.sendMessage("Checking version, please wait...");
-+            sender.magnet().sendMessage(Component.text("Checking version, please wait..."));
-             if (!versionTaskStarted) {
-                 versionTaskStarted = true;
-                 new Thread(new Runnable() {
-@@ -231,7 +235,7 @@ public class VersionCommand extends BukkitCommand {
-             hasVersion = true;
-             versionTaskStarted = false;
-             for (CommandSender sender : versionWaiters) {
--                sender.sendMessage(versionMessage);
-+                sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(versionMessage));
-             }
-             versionWaiters.clear();
-         } finally {
+     /**
 diff --git a/src/main/java/org/bukkit/inventory/meta/BookMeta.java b/src/main/java/org/bukkit/inventory/meta/BookMeta.java
-index 75b03ac3553cab0b4204a9ea442f7ade1dcb1ae5..5f9222bbecb01c8055072eea26c4ab1aaa82d017 100644
+index 75b03ac3553cab0b4204a9ea442f7ade1dcb1ae5..86a38ae9a2cc2e3e513aecde75e9942ddb9d10ad 100644
 --- a/src/main/java/org/bukkit/inventory/meta/BookMeta.java
 +++ b/src/main/java/org/bukkit/inventory/meta/BookMeta.java
-@@ -4,6 +4,13 @@ import java.util.List;
+@@ -4,6 +4,11 @@ import java.util.List;
  import net.md_5.bungee.api.chat.BaseComponent;
  
  import org.bukkit.Material;
 +// Magnet start
 +import net.kyori.adventure.text.Component;
 +import net.kyori.adventure.text.ComponentLike;
-+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
-+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
++import org.mineblock.magnet.adventure.MagnetText;
 +// Magnet end
  
  /**
   * Represents a book ({@link Material#BOOK_AND_QUILL} or {@link
-@@ -245,4 +252,85 @@ public interface BookMeta extends ItemMeta {
+@@ -245,4 +250,66 @@ public interface BookMeta extends ItemMeta {
      @Override
      Spigot spigot();
      // Spigot end
 +
 +    // Magnet start
 +    /**
-+     * 获取书籍元数据的 Adventure 组件入口。
++     * 设置书籍标题，超过 32 字符时截断。
 +     *
-+     * @return 绑定此书籍元数据的组件入口
++     * @param title 标题组件
 +     */
-+    @Override
-+    default Magnet magnet() {
-+        return new Magnet(this);
++    default void title(ComponentLike title) {
++        if (title == null) {
++            setTitle(null);
++            return;
++        }
++        String text = MagnetText.toPlain(title);
++        setTitle(text.length() > 32 ? text.substring(0, 32) : text);
 +    }
 +
 +    /**
-+     * 绑定到 {@link BookMeta} 的 Adventure 组件入口。
++     * 设置书籍作者，超过 32 字符时截断。
++     *
++     * @param author 作者组件
 +     */
-+    class Magnet extends ItemMeta.Magnet {
-+        private static final GsonComponentSerializer JSON = GsonComponentSerializer.colorDownsamplingGson();
-+        private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacySection();
-+
-+        private final BookMeta book;
-+
-+        protected Magnet(BookMeta book) {
-+            super(book);
-+            this.book = book;
++    default void author(ComponentLike author) {
++        if (author == null) {
++            setAuthor(null);
++            return;
 +        }
++        String text = MagnetText.toPlain(author);
++        setAuthor(text.length() > 32 ? text.substring(0, 32) : text);
++    }
 +
-+        /**
-+         * 设置书籍标题。
-+         *
-+         * @param title 标题组件
-+         */
-+        public void title(ComponentLike title) {
-+            book.setTitle(PlainTextComponentSerializer.plainText().serialize(withoutLegacyFormatting(title.asComponent())));
-+        }
++    /**
++     * 设置书籍页面。
++     *
++     * @param pages 页面组件
++     */
++    default void pages(ComponentLike... pages) {
++        pages(java.util.Arrays.asList(pages));
++    }
 +
-+        /**
-+         * 设置书籍作者。
-+         *
-+         * @param author 作者组件
-+         */
-+        public void author(ComponentLike author) {
-+            book.setAuthor(PlainTextComponentSerializer.plainText().serialize(withoutLegacyFormatting(author.asComponent())));
++    /**
++     * 设置书籍页面。
++     *
++     * @param pages 页面组件
++     */
++    default void pages(List<? extends ComponentLike> pages) {
++        List<String> legacy = new java.util.ArrayList<>(pages.size());
++        for (ComponentLike page : pages) {
++            legacy.add(MagnetText.toLegacy(page));
 +        }
++        setPages(legacy);
++    }
 +
-+        /**
-+         * 设置书籍页面。
-+         *
-+         * @param pages 页面组件
-+         */
-+        public void pages(ComponentLike... pages) {
-+            pages(java.util.Arrays.asList(pages));
-+        }
-+
-+        /**
-+         * 设置书籍页面。
-+         *
-+         * @param pages 页面组件
-+         */
-+        public void pages(List<? extends ComponentLike> pages) {
-+            List<String> serialized = new java.util.ArrayList<>(pages.size());
-+            for (ComponentLike page : pages) {
-+                serialized.add(toLegacy(page.asComponent()));
-+            }
-+            book.setPages(serialized);
-+        }
-+
-+        /**
-+         * 设置指定页面。
-+         *
-+         * @param page 页码，从 1 开始
-+         * @param content 页面组件
-+         */
-+        public void page(int page, ComponentLike content) {
-+            book.setPage(page, toLegacy(content.asComponent()));
-+        }
-+
-+        private static String toLegacy(Component component) {
-+            return LEGACY.serialize(JSON.deserialize(JSON.serialize(withoutLegacyFormatting(component))));
-+        }
++    /**
++     * 设置指定页面。
++     *
++     * @param page 页码，从 1 开始
++     * @param content 页面组件
++     */
++    default void page(int page, ComponentLike content) {
++        setPage(page, MagnetText.toLegacy(content));
 +    }
 +    // Magnet end
  }
 diff --git a/src/main/java/org/bukkit/inventory/meta/ItemMeta.java b/src/main/java/org/bukkit/inventory/meta/ItemMeta.java
-index 62ddbbba870e032aa111f29c48af8bd03f5fa7c2..25726d2ac48f9aabd235270cd622cbc2aeef133d 100644
+index 62ddbbba870e032aa111f29c48af8bd03f5fa7c2..375174d8b614c533a8da82ec064c73cae1f322d4 100644
 --- a/src/main/java/org/bukkit/inventory/meta/ItemMeta.java
 +++ b/src/main/java/org/bukkit/inventory/meta/ItemMeta.java
-@@ -7,6 +7,12 @@ import java.util.Set;
+@@ -7,6 +7,11 @@ import java.util.Set;
  import org.bukkit.configuration.serialization.ConfigurationSerializable;
  import org.bukkit.enchantments.Enchantment;
  import org.bukkit.inventory.ItemFlag;
 +// Magnet start
 +import net.kyori.adventure.text.Component;
 +import net.kyori.adventure.text.ComponentLike;
-+import net.kyori.adventure.text.TextReplacementConfig;
-+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
++import org.mineblock.magnet.adventure.MagnetText;
 +// Magnet end
  
  /**
   * This type represents the storage mechanism for auxiliary item data.
-@@ -228,4 +234,70 @@ public interface ItemMeta extends Cloneable, ConfigurationSerializable {
+@@ -228,4 +233,48 @@ public interface ItemMeta extends Cloneable, ConfigurationSerializable {
  
      Spigot spigot();
      // Spigot end
 +
 +    // Magnet start
 +    /**
-+     * 获取物品元数据的 Adventure 组件入口。
++     * 设置物品显示名；传入 null 清除。
 +     *
-+     * @return 绑定此物品元数据的组件入口
++     * @param name 显示名组件
 +     */
-+    default Magnet magnet() {
-+        return new Magnet(this);
++    default void displayName(ComponentLike name) {
++        setDisplayName(name == null ? null : MagnetText.toLegacy(name));
 +    }
 +
 +    /**
-+     * 绑定到 {@link ItemMeta} 的 Adventure 组件入口。
++     * 设置物品 lore。
++     *
++     * @param lines lore 行
 +     */
-+    class Magnet {
-+        private static final GsonComponentSerializer JSON = GsonComponentSerializer.colorDownsamplingGson();
++    default void lore(ComponentLike... lines) {
++        lore(java.util.Arrays.asList(lines));
++    }
 +
-+        protected final ItemMeta meta;
-+
-+        protected Magnet(ItemMeta meta) {
-+            this.meta = meta;
++    /**
++     * 设置物品 lore；传入 null 清除。
++     *
++     * @param lines lore 行
++     */
++    default void lore(List<? extends ComponentLike> lines) {
++        if (lines == null) {
++            setLore(null);
++            return;
 +        }
-+
-+        /**
-+         * 设置物品显示名。
-+         *
-+         * @param name 显示名组件
-+         */
-+        public void displayName(ComponentLike name) {
-+            meta.setDisplayName(JSON.serialize(withoutLegacyFormatting(name.asComponent())));
++        List<String> legacy = new java.util.ArrayList<>(lines.size());
++        for (ComponentLike line : lines) {
++            legacy.add(MagnetText.toLegacy(line));
 +        }
++        setLore(legacy);
++    }
 +
-+        /**
-+         * 设置物品 lore。
-+         *
-+         * @param lines lore 行
-+         */
-+        public void lore(ComponentLike... lines) {
-+            lore(java.util.Arrays.asList(lines));
-+        }
-+
-+        /**
-+         * 设置物品 lore。
-+         *
-+         * @param lines lore 行
-+         */
-+        public void lore(List<? extends ComponentLike> lines) {
-+            List<String> serialized = new java.util.ArrayList<>(lines.size());
-+            for (ComponentLike line : lines) {
-+                serialized.add(JSON.serialize(withoutLegacyFormatting(line.asComponent())));
-+            }
-+            meta.setLore(serialized);
-+        }
-+
-+        /**
-+         * 清除物品 lore。
-+         */
-+        public void clearLore() {
-+            meta.setLore(null);
-+        }
-+
-+        protected static Component withoutLegacyFormatting(Component component) {
-+            return component.replaceText(TextReplacementConfig.builder().matchLiteral("\u00a7").replacement("").build());
-+        }
++    /**
++     * 清除物品 lore。
++     */
++    default void clearLore() {
++        setLore(null);
 +    }
 +    // Magnet end
  }
+diff --git a/src/main/java/org/mineblock/magnet/adventure/MagnetText.java b/src/main/java/org/mineblock/magnet/adventure/MagnetText.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..f9b4be8429f238a1dff289310caaf533af69dfdf
+--- /dev/null
++++ b/src/main/java/org/mineblock/magnet/adventure/MagnetText.java
+@@ -0,0 +1,85 @@
++package org.mineblock.magnet.adventure;
++
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.ComponentLike;
++import net.kyori.adventure.text.TextReplacementConfig;
++import net.kyori.adventure.text.serializer.ansi.ANSIComponentSerializer;
++import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
++import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
++import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
++
++/**
++ * Adventure 组件与 1.12.2 文本格式之间的转换。
++ */
++public final class MagnetText {
++
++    private static final GsonComponentSerializer JSON = GsonComponentSerializer.colorDownsamplingGson();
++    private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacySection();
++    private static final PlainTextComponentSerializer PLAIN = PlainTextComponentSerializer.plainText();
++    private static final ANSIComponentSerializer ANSI = ANSIComponentSerializer.ansi();
++
++    /**
++     * 序列化为 1.12.2 客户端可解析的 JSON。
++     *
++     * @param component 组件
++     * @return JSON 文本
++     */
++    public static String toJson(ComponentLike component) {
++        return JSON.serialize(withoutLegacyFormatting(component.asComponent()));
++    }
++
++    /**
++     * 转换为 legacy 文本，颜色会先下调到命名颜色。
++     *
++     * @param component 组件
++     * @return legacy 文本
++     */
++    public static String toLegacy(ComponentLike component) {
++        try {
++            return LEGACY.serialize(JSON.deserialize(toJson(component)));
++        } catch (RuntimeException ex) {
++            return LEGACY.serialize(Component.text(toPlain(component).replace('\u00a7', ' ')));
++        }
++    }
++
++    /**
++     * 转换为纯文本。
++     *
++     * @param component 组件
++     * @return 纯文本
++     */
++    public static String toPlain(ComponentLike component) {
++        return PLAIN.serialize(withoutLegacyFormatting(component.asComponent()));
++    }
++
++    /**
++     * 转换为 ANSI 文本。
++     *
++     * @param component 组件
++     * @return ANSI 文本
++     */
++    public static String toAnsi(ComponentLike component) {
++        try {
++            return ANSI.serialize(withoutLegacyFormatting(component.asComponent()));
++        } catch (RuntimeException ex) {
++            return toLegacy(component);
++        }
++    }
++
++    /**
++     * 解析 legacy 文本。
++     *
++     * @param text legacy 文本
++     * @return 组件
++     */
++    public static Component fromLegacy(String text) {
++        return text == null ? Component.empty() : LEGACY.deserialize(text);
++    }
++
++    private static Component withoutLegacyFormatting(Component component) {
++        return component.replaceText(TextReplacementConfig.builder().matchLiteral("\u00a7").replacement("").build());
++    }
++
++    private MagnetText() {
++    }
++}
+diff --git a/src/test/java/org/bukkit/ServerAdventureTest.java b/src/test/java/org/bukkit/ServerAdventureTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..48483ebe025846e2f4b1d244d783692e31ecfbaf
+--- /dev/null
++++ b/src/test/java/org/bukkit/ServerAdventureTest.java
+@@ -0,0 +1,39 @@
++package org.bukkit;
++
++import net.kyori.adventure.text.Component;
++import org.junit.Test;
++
++import java.lang.reflect.InvocationHandler;
++import java.lang.reflect.Proxy;
++import java.util.ArrayList;
++import java.util.List;
++
++import static org.junit.Assert.assertEquals;
++
++public class ServerAdventureTest {
++
++    @Test
++    public void broadcastAcceptsComponentLike() {
++        List<Component> messages = new ArrayList<>();
++        Server server = (Server) Proxy.newProxyInstance(
++                Server.class.getClassLoader(),
++                new Class<?>[]{Server.class},
++                (proxy, method, args) -> {
++                    if (method.isDefault()) {
++                        return InvocationHandler.invokeDefault(proxy, method, args);
++                    }
++                    if (method.getName().equals("broadcast") && args != null && args.length == 2 && args[0] instanceof Component) {
++                        messages.add((Component) args[0]);
++                        return 1;
++                    }
++                    return null;
++                });
++
++        assertEquals(1, server.broadcast(Component.text("first").toBuilder()));
++        assertEquals(1, server.broadcast(Component.text("second").toBuilder(), "magnet.test"));
++
++        assertEquals(2, messages.size());
++        assertEquals(Component.text("first"), messages.get(0));
++        assertEquals(Component.text("second"), messages.get(1));
++    }
++}
+diff --git a/src/test/java/org/bukkit/command/CommandSenderAdventureTest.java b/src/test/java/org/bukkit/command/CommandSenderAdventureTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..12ec5c491060700b1f4cb419bbc6d9783d2e3bda
+--- /dev/null
++++ b/src/test/java/org/bukkit/command/CommandSenderAdventureTest.java
+@@ -0,0 +1,38 @@
++package org.bukkit.command;
++
++import net.kyori.adventure.text.Component;
++import org.junit.Test;
++
++import java.lang.reflect.InvocationHandler;
++import java.lang.reflect.Proxy;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++
++import static org.junit.Assert.assertEquals;
++
++public class CommandSenderAdventureTest {
++
++    @Test
++    public void componentLikeBuildersAreAccepted() {
++        List<String> messages = new ArrayList<>();
++        CommandSender sender = (CommandSender) Proxy.newProxyInstance(
++                CommandSender.class.getClassLoader(),
++                new Class<?>[]{CommandSender.class},
++                (proxy, method, args) -> {
++                    if (method.isDefault()) {
++                        return InvocationHandler.invokeDefault(proxy, method, args);
++                    }
++                    if (method.getName().equals("sendMessage") && args != null && args.length == 1 && args[0] instanceof String) {
++                        messages.add((String) args[0]);
++                    }
++                    return null;
++                });
++
++        sender.sendMessage(Component.text("first").toBuilder());
++        sender.sendMessage(Component.text("second").toBuilder(), Component.text("third").toBuilder());
++        sender.sendMessage(Component.text("single"));
++
++        assertEquals(Arrays.asList("first", "second", "third", "single"), messages);
++    }
++}

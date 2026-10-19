@@ -40,113 +40,168 @@ index f5ef1ba31abc822458e5be9ea8f25c3d8d393df3..b4e497c7380aa1b33f85d05126b20fa8
          this.a = packetdataserializer.f();
          this.b = packetdataserializer.f();
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-index 955a9d3b8b99b4ced19fe9aa602a97a6d7c940b8..02b7c90db111b9fb0363f48b0e9242cf7d2b35fb 100644
+index 955a9d3b8b99b4ced19fe9aa602a97a6d7c940b8..9d13e3ac1af393dc314e3aa445a8a21f12b62879 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-@@ -114,6 +114,11 @@ import org.bukkit.plugin.messaging.StandardMessenger;
- import org.bukkit.scheduler.BukkitWorker;
- import org.bukkit.util.StringUtil;
- import org.bukkit.util.permissions.DefaultPermissions;
-+// Magnet start
-+import net.kyori.adventure.text.Component;
-+import net.kyori.adventure.text.format.NamedTextColor;
-+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-+// Magnet end
- import org.yaml.snakeyaml.Yaml;
- import org.yaml.snakeyaml.constructor.SafeConstructor;
- import org.yaml.snakeyaml.error.MarkedYAMLException;
-@@ -694,7 +699,7 @@ public final class CraftServer implements Server {
-             UnknownCommandEvent event = new UnknownCommandEvent(sender, commandLine, org.spigotmc.SpigotConfig.unknownCommandMessage);
-             Bukkit.getServer().getPluginManager().callEvent(event);
-             if (StringUtils.isNotEmpty(event.getMessage())) {
--                sender.sendMessage(event.getMessage());
-+                sender.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(event.getMessage()));
-             }
-             // Paper end
-         }
-@@ -1407,7 +1412,7 @@ public final class CraftServer implements Server {
-         message = broadcastMessageEvent.getMessage();
- 
-         for (CommandSender recipient : recipients) {
--            recipient.sendMessage(message);
-+            recipient.magnet().sendMessage(LegacyComponentSerializer.legacySection().deserialize(message));
-         }
- 
+@@ -1413,6 +1413,40 @@ public final class CraftServer implements Server {
          return recipients.size();
-@@ -1765,7 +1770,7 @@ public final class CraftServer implements Server {
-                 completions = getCommandMap().tabComplete(player, message, new Location(player.getWorld(), pos.getX(), pos.getY(), pos.getZ()));
-             }
-         } catch (CommandException ex) {
--            player.sendMessage(ChatColor.RED + "An internal error occurred while attempting to tab-complete this command");
-+            player.magnet().sendMessage(Component.text("An internal error occurred while attempting to tab-complete this command", NamedTextColor.RED));
-             getLogger().log(Level.SEVERE, "Exception when " + player.getName() + " attempted to tab complete " + message, ex);
-         }
+     }
  
++    // Magnet start
++    @Override
++    public Iterable<? extends net.kyori.adventure.audience.Audience> audiences() {
++        java.util.List<net.kyori.adventure.audience.Audience> audiences = new java.util.ArrayList<>();
++        audiences.add(this.getConsoleSender());
++        audiences.addAll(this.getOnlinePlayers());
++        return audiences;
++    }
++
++    @Override
++    public int broadcast(net.kyori.adventure.text.Component message, String permission) {
++        Set<CommandSender> recipients = new HashSet<>();
++        for (Permissible permissible : getPluginManager().getPermissionSubscriptions(permission)) {
++            if (permissible instanceof CommandSender && permissible.hasPermission(permission)) {
++                recipients.add((CommandSender) permissible);
++            }
++        }
++
++        BroadcastMessageEvent broadcastMessageEvent = new BroadcastMessageEvent(message, recipients);
++        getPluginManager().callEvent(broadcastMessageEvent);
++
++        if (broadcastMessageEvent.isCancelled()) {
++            return 0;
++        }
++
++        net.kyori.adventure.text.Component result = broadcastMessageEvent.message();
++        for (CommandSender recipient : recipients) {
++            recipient.sendMessage(result);
++        }
++
++        return recipients.size();
++    }
++    // Magnet end
++
+     // Paper start
+     @Nullable
+     public UUID getPlayerUniqueId(String name) {
 diff --git a/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java b/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java
-index 9abcf92db3b5c9c249a2782fb510114f48af046e..8a68b1a35289e2446d1a291d0b34b89c561a93b2 100644
+index 9abcf92db3b5c9c249a2782fb510114f48af046e..d602dd0dfbfd302c6bf4adad9bc68353663ca073 100644
 --- a/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java
 +++ b/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java
-@@ -63,4 +63,13 @@ public class CraftConsoleCommandSender extends ServerCommandSender implements Co
+@@ -63,4 +63,11 @@ public class CraftConsoleCommandSender extends ServerCommandSender implements Co
      public boolean isConversing() {
          return conversationTracker.isConversing();
      }
 +
 +    // Magnet start
-+    private final org.bukkit.command.CommandSender.Magnet magnet = new org.mineblock.magnet.adventure.MagnetConsoleAudience(this);
-+
 +    @Override
-+    public org.bukkit.command.CommandSender.Magnet magnet() {
-+        return magnet;
++    public void sendMessage(net.kyori.adventure.text.Component message) {
++        sendMessage(org.mineblock.magnet.adventure.MagnetConsole.render(message));
 +    }
 +    // Magnet end
  }
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-index fa104ba4ded09339a3b895969a1f40d3c6923f08..ef62cbf61f7d30792ba6d6850a8fce3bd58f02b7 100644
+index fa104ba4ded09339a3b895969a1f40d3c6923f08..d1572dfe02078a2e639b88ef21d9528b015cab4a 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-@@ -1972,4 +1972,14 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+@@ -1972,4 +1972,73 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
          return spigot;
      }
      // Spigot end
 +
 +    // Magnet start
-+    private final org.bukkit.command.CommandSender.Magnet magnet = new org.mineblock.magnet.adventure.MagnetPlayerAudience(this);
++    private final org.mineblock.magnet.adventure.MagnetPlayerAudience adventureAudience = new org.mineblock.magnet.adventure.MagnetPlayerAudience(this);
 +
 +    @Override
-+    public org.bukkit.command.CommandSender.Magnet magnet()
-+    {
-+        return magnet;
++    public void sendMessage(net.kyori.adventure.text.Component message) {
++        adventureAudience.sendMessage(message);
++    }
++
++    @Override
++    public void sendActionBar(net.kyori.adventure.text.Component message) {
++        adventureAudience.sendActionBar(message);
++    }
++
++    @Override
++    public void sendPlayerListHeaderAndFooter(net.kyori.adventure.text.Component header, net.kyori.adventure.text.Component footer) {
++        adventureAudience.sendPlayerListHeaderAndFooter(header, footer);
++    }
++
++    @Override
++    public <T> void sendTitlePart(net.kyori.adventure.title.TitlePart<T> part, T value) {
++        adventureAudience.sendTitlePart(part, value);
++    }
++
++    @Override
++    public void clearTitle() {
++        adventureAudience.clearTitle();
++    }
++
++    @Override
++    public void showBossBar(net.kyori.adventure.bossbar.BossBar bar) {
++        adventureAudience.showBossBar(bar);
++    }
++
++    @Override
++    public void hideBossBar(net.kyori.adventure.bossbar.BossBar bar) {
++        adventureAudience.hideBossBar(bar);
++    }
++
++    @Override
++    public void playSound(net.kyori.adventure.sound.Sound sound) {
++        adventureAudience.playSound(sound);
++    }
++
++    @Override
++    public void playSound(net.kyori.adventure.sound.Sound sound, double x, double y, double z) {
++        adventureAudience.playSound(sound, x, y, z);
++    }
++
++    @Override
++    public void playSound(net.kyori.adventure.sound.Sound sound, net.kyori.adventure.sound.Sound.Emitter emitter) {
++        adventureAudience.playSound(sound, emitter);
++    }
++
++    @Override
++    public void stopSound(net.kyori.adventure.sound.SoundStop stop) {
++        adventureAudience.stopSound(stop);
++    }
++
++    @Override
++    public void sendResourcePacks(net.kyori.adventure.resource.ResourcePackRequest request) {
++        adventureAudience.sendResourcePacks(request);
++    }
++
++    @Override
++    public void openBook(net.kyori.adventure.inventory.Book book) {
++        adventureAudience.openBook(book);
 +    }
 +    // Magnet end
  }
 diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java b/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java
-index c623b350af9eb96636f53809bf5f14142d7d9c82..59ce3974ad1c2ab35919918544772140050f7796 100644
+index c623b350af9eb96636f53809bf5f14142d7d9c82..cc98eccc77000f7437bbf070ad54c7800625084d 100644
 --- a/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java
 +++ b/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java
-@@ -341,6 +341,9 @@ public class CraftMetaBook extends CraftMetaItem implements BookMeta {
-     public CraftMetaBook clone() {
-         CraftMetaBook meta = (CraftMetaBook) super.clone();
-         meta.pages = new ArrayList<IChatBaseComponent>(pages);
-+        // Magnet start - magnet 绑定原对象，克隆后重新创建
-+        meta.magnet = null;
-+        // Magnet end
-         return meta;
-     }
- 
-@@ -483,4 +486,16 @@ public class CraftMetaBook extends CraftMetaItem implements BookMeta {
+@@ -483,4 +483,22 @@ public class CraftMetaBook extends CraftMetaItem implements BookMeta {
          return spigot;
      }
      // Spigot end
 +
 +    // Magnet start
-+    private org.bukkit.inventory.meta.BookMeta.Magnet magnet;
++    @Override
++    public void pages(java.util.List<? extends net.kyori.adventure.text.ComponentLike> pages) {
++        this.pages.clear();
++        for (int i = 0; i < Math.min(pages.size(), MAX_PAGES); i++) {
++            this.pages.add(org.mineblock.magnet.adventure.MagnetComponents.toNms(pages.get(i)));
++        }
++    }
 +
 +    @Override
-+    public org.bukkit.inventory.meta.BookMeta.Magnet magnet() {
-+        if (magnet == null) {
-+            magnet = new org.mineblock.magnet.adventure.MagnetBookMeta(this);
++    public void page(int page, net.kyori.adventure.text.ComponentLike content) {
++        if (!isValidPage(page)) {
++            throw new IllegalArgumentException("Invalid page number " + page + "/" + this.pages.size());
 +        }
-+        return magnet;
++        this.pages.set(page - 1, org.mineblock.magnet.adventure.MagnetComponents.toNms(content));
 +    }
 +    // Magnet end
  }
@@ -233,6 +288,525 @@ index 68dafcfc08fefd9c64901cab1a16bea4e661b2d3..97566bcedb2612a04136886b1a7a2d3f
      /**
       * 是否启用 Velocity 现代玩家信息转发。
       */
+diff --git a/src/main/java/org/mineblock/magnet/adventure/MagnetBossBar.java b/src/main/java/org/mineblock/magnet/adventure/MagnetBossBar.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..c437e72a7081191040066b7ab641671a227677ca
+--- /dev/null
++++ b/src/main/java/org/mineblock/magnet/adventure/MagnetBossBar.java
+@@ -0,0 +1,91 @@
++package org.mineblock.magnet.adventure;
++
++import net.kyori.adventure.bossbar.BossBar;
++import net.kyori.adventure.text.Component;
++import net.minecraft.server.BossBattle;
++import net.minecraft.server.BossBattleServer;
++import net.minecraft.server.EntityPlayer;
++import net.minecraft.server.PacketPlayOutBoss;
++
++import java.util.Set;
++
++/**
++ * Adventure BossBar 的 1.12.2 实现。
++ */
++public final class MagnetBossBar implements BossBar.Listener {
++
++    private final BossBar bar;
++    private final BossBattleServer handle;
++
++    /**
++     * 创建 BossBar 包装。
++     *
++     * @param bar Adventure BossBar
++     */
++    public MagnetBossBar(BossBar bar) {
++        this.bar = bar;
++        this.handle = new BossBattleServer(
++                MagnetComponents.toNms(bar.name()),
++                BossBattle.BarColor.valueOf(bar.color().name()),
++                BossBattle.BarStyle.valueOf(bar.overlay().name())
++        );
++        updateFlags();
++        bar.addListener(this);
++    }
++
++    /**
++     * 让玩家看到此 BossBar。
++     *
++     * @param player 玩家
++     */
++    public void add(EntityPlayer player) {
++        handle.addPlayer(player);
++    }
++
++    /**
++     * 让玩家隐藏此 BossBar。
++     *
++     * @param player 玩家
++     */
++    public void remove(EntityPlayer player) {
++        handle.removePlayer(player);
++        if (handle.getPlayers().isEmpty()) {
++            bar.removeListener(this);
++        }
++    }
++
++    @Override
++    public void bossBarNameChanged(BossBar bar, Component oldName, Component newName) {
++        handle.title = MagnetComponents.toNms(newName);
++        handle.sendUpdate(PacketPlayOutBoss.Action.UPDATE_NAME);
++    }
++
++    @Override
++    public void bossBarProgressChanged(BossBar bar, float oldProgress, float newProgress) {
++        handle.setProgress(newProgress);
++    }
++
++    @Override
++    public void bossBarColorChanged(BossBar bar, BossBar.Color oldColor, BossBar.Color newColor) {
++        handle.color = BossBattle.BarColor.valueOf(newColor.name());
++        handle.sendUpdate(PacketPlayOutBoss.Action.UPDATE_STYLE);
++    }
++
++    @Override
++    public void bossBarOverlayChanged(BossBar bar, BossBar.Overlay oldOverlay, BossBar.Overlay newOverlay) {
++        handle.style = BossBattle.BarStyle.valueOf(newOverlay.name());
++        handle.sendUpdate(PacketPlayOutBoss.Action.UPDATE_STYLE);
++    }
++
++    @Override
++    public void bossBarFlagsChanged(BossBar bar, Set<BossBar.Flag> flagsAdded, Set<BossBar.Flag> flagsRemoved) {
++        updateFlags();
++        handle.sendUpdate(PacketPlayOutBoss.Action.UPDATE_PROPERTIES);
++    }
++
++    private void updateFlags() {
++        handle.setDarkenSky(bar.hasFlag(BossBar.Flag.DARKEN_SCREEN));
++        handle.setPlayMusic(bar.hasFlag(BossBar.Flag.PLAY_BOSS_MUSIC));
++        handle.setCreateFog(bar.hasFlag(BossBar.Flag.CREATE_WORLD_FOG));
++    }
++}
+diff --git a/src/main/java/org/mineblock/magnet/adventure/MagnetComponents.java b/src/main/java/org/mineblock/magnet/adventure/MagnetComponents.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..14cd4720dd89e1da7ad26c0d95942f6d3fb730a9
+--- /dev/null
++++ b/src/main/java/org/mineblock/magnet/adventure/MagnetComponents.java
+@@ -0,0 +1,30 @@
++package org.mineblock.magnet.adventure;
++
++import net.kyori.adventure.text.ComponentLike;
++import net.minecraft.server.ChatComponentText;
++import net.minecraft.server.IChatBaseComponent;
++import org.mineblock.magnet.MagnetConfig;
++
++/**
++ * Adventure 组件与 NMS 组件之间的转换。
++ */
++public final class MagnetComponents {
++
++    /**
++     * 把组件转换为 NMS 组件。
++     *
++     * @param component 组件
++     * @return NMS 组件
++     */
++    public static IChatBaseComponent toNms(ComponentLike component) {
++        try {
++            return IChatBaseComponent.ChatSerializer.a(MagnetText.toJson(component));
++        } catch (RuntimeException ex) {
++            MagnetConfig.logError("[Magnet] Failed to serialize Adventure component: " + ex.getMessage());
++            return new ChatComponentText(MagnetText.toPlain(component).replace('\u00a7', ' '));
++        }
++    }
++
++    private MagnetComponents() {
++    }
++}
+diff --git a/src/main/java/org/mineblock/magnet/adventure/MagnetConsole.java b/src/main/java/org/mineblock/magnet/adventure/MagnetConsole.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..7d8604923172b38279715098c17a34794d797131
+--- /dev/null
++++ b/src/main/java/org/mineblock/magnet/adventure/MagnetConsole.java
+@@ -0,0 +1,63 @@
++package org.mineblock.magnet.adventure;
++
++import net.minecrell.terminalconsole.TerminalConsoleAppender;
++import net.kyori.adventure.text.ComponentLike;
++import org.bukkit.Bukkit;
++import org.mineblock.magnet.MagnetConfig;
++
++/**
++ * 控制台 Adventure 组件输出。
++ */
++public final class MagnetConsole {
++
++    /**
++     * 渲染控制台文本，支持 ANSI 时使用真彩色，否则回退 legacy。
++     *
++     * @param component 组件
++     * @return 控制台文本
++     */
++    public static String render(ComponentLike component) {
++        if (MagnetConfig.isAdventureConsoleAnsi() && ansiSupported()) {
++            return MagnetText.toAnsi(component);
++        }
++        return MagnetText.toLegacy(component);
++    }
++
++    /**
++     * 输出信息级组件日志。
++     *
++     * @param component 组件
++     */
++    public static void info(ComponentLike component) {
++        Bukkit.getLogger().info(render(component));
++    }
++
++    /**
++     * 输出警告级组件日志。
++     *
++     * @param component 组件
++     */
++    public static void warn(ComponentLike component) {
++        Bukkit.getLogger().warning(render(component));
++    }
++
++    /**
++     * 输出错误级组件日志。
++     *
++     * @param component 组件
++     */
++    public static void error(ComponentLike component) {
++        Bukkit.getLogger().severe(render(component));
++    }
++
++    private static boolean ansiSupported() {
++        try {
++            return TerminalConsoleAppender.isAnsiSupported();
++        } catch (Throwable ignored) {
++            return false;
++        }
++    }
++
++    private MagnetConsole() {
++    }
++}
+diff --git a/src/main/java/org/mineblock/magnet/adventure/MagnetPlayerAudience.java b/src/main/java/org/mineblock/magnet/adventure/MagnetPlayerAudience.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..939cef8b9a7b6aee518d0af5fa5af6bf950faab6
+--- /dev/null
++++ b/src/main/java/org/mineblock/magnet/adventure/MagnetPlayerAudience.java
+@@ -0,0 +1,270 @@
++package org.mineblock.magnet.adventure;
++
++import net.kyori.adventure.audience.Audience;
++import net.kyori.adventure.bossbar.BossBar;
++import net.kyori.adventure.inventory.Book;
++import net.kyori.adventure.resource.ResourcePackInfo;
++import net.kyori.adventure.resource.ResourcePackRequest;
++import net.kyori.adventure.sound.Sound;
++import net.kyori.adventure.sound.SoundStop;
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.title.Title;
++import net.kyori.adventure.title.TitlePart;
++import net.minecraft.server.ChatComponentText;
++import net.minecraft.server.ChatMessageType;
++import net.minecraft.server.EntityPlayer;
++import net.minecraft.server.EnumHand;
++import net.minecraft.server.PacketPlayOutChat;
++import net.minecraft.server.PacketPlayOutPlayerListHeaderFooter;
++import net.minecraft.server.PacketPlayOutSetSlot;
++import net.minecraft.server.PacketPlayOutTitle;
++import net.minecraft.server.PlayerInventory;
++import org.bukkit.Location;
++import org.bukkit.Material;
++import org.bukkit.SoundCategory;
++import org.bukkit.craftbukkit.entity.CraftPlayer;
++import org.bukkit.craftbukkit.inventory.CraftItemStack;
++import org.bukkit.craftbukkit.inventory.CraftMetaBook;
++import org.bukkit.entity.Player;
++import org.bukkit.inventory.ItemStack;
++import org.bukkit.inventory.meta.BookMeta;
++import org.mineblock.magnet.MagnetConfig;
++
++import java.util.IdentityHashMap;
++import java.util.List;
++import java.util.Map;
++
++/**
++ * 玩家端的 Adventure 媒体实现。
++ */
++public final class MagnetPlayerAudience implements Audience {
++
++    private final Player player;
++    private final Map<BossBar, MagnetBossBar> bossBars = new IdentityHashMap<>();
++
++    /**
++     * 创建玩家组件入口。
++     *
++     * @param player 玩家
++     */
++    public MagnetPlayerAudience(Player player) {
++        this.player = player;
++    }
++
++    @Override
++    public void sendMessage(Component message) {
++        EntityPlayer handle = handle();
++        if (handle.playerConnection == null) {
++            return;
++        }
++        handle.playerConnection.sendPacket(new PacketPlayOutChat(MagnetComponents.toNms(message), ChatMessageType.SYSTEM));
++    }
++
++    @Override
++    public void sendActionBar(Component message) {
++        EntityPlayer handle = handle();
++        if (handle.playerConnection == null) {
++            return;
++        }
++        // 1.12.2 action bar 对 JSON 颜色支持不稳定，沿用 legacy 文本。
++        String legacy = MagnetText.toLegacy(message);
++        handle.playerConnection.sendPacket(new PacketPlayOutChat(new ChatComponentText(legacy), ChatMessageType.GAME_INFO));
++    }
++
++    @Override
++    public void sendPlayerListHeaderAndFooter(Component header, Component footer) {
++        EntityPlayer handle = handle();
++        if (handle.playerConnection == null) {
++            return;
++        }
++        handle.playerConnection.sendPacket(new PacketPlayOutPlayerListHeaderFooter(
++                MagnetComponents.toNms(header),
++                MagnetComponents.toNms(footer)
++        ));
++    }
++
++    @Override
++    public <T> void sendTitlePart(TitlePart<T> part, T value) {
++        EntityPlayer handle = handle();
++        if (handle.playerConnection == null) {
++            return;
++        }
++        if (part == TitlePart.TITLE) {
++            handle.playerConnection.sendPacket(new PacketPlayOutTitle(
++                    PacketPlayOutTitle.EnumTitleAction.TITLE,
++                    MagnetComponents.toNms((Component) value)
++            ));
++        } else if (part == TitlePart.SUBTITLE) {
++            handle.playerConnection.sendPacket(new PacketPlayOutTitle(
++                    PacketPlayOutTitle.EnumTitleAction.SUBTITLE,
++                    MagnetComponents.toNms((Component) value)
++            ));
++        } else if (part == TitlePart.TIMES) {
++            Title.Times times = (Title.Times) value;
++            handle.playerConnection.sendPacket(new PacketPlayOutTitle(
++                    PacketPlayOutTitle.EnumTitleAction.TIMES,
++                    (net.minecraft.server.IChatBaseComponent) null,
++                    ticks(times.fadeIn()),
++                    ticks(times.stay()),
++                    ticks(times.fadeOut())
++            ));
++        }
++    }
++
++    @Override
++    public void clearTitle() {
++        EntityPlayer handle = handle();
++        if (handle.playerConnection != null) {
++            handle.playerConnection.sendPacket(new PacketPlayOutTitle(PacketPlayOutTitle.EnumTitleAction.CLEAR, null));
++        }
++    }
++
++    @Override
++    public void resetTitle() {
++        EntityPlayer handle = handle();
++        if (handle.playerConnection != null) {
++            handle.playerConnection.sendPacket(new PacketPlayOutTitle(PacketPlayOutTitle.EnumTitleAction.RESET, null));
++        }
++    }
++
++    @Override
++    public void showBossBar(BossBar bar) {
++        bossBars.computeIfAbsent(bar, MagnetBossBar::new).add(handle());
++    }
++
++    @Override
++    public void hideBossBar(BossBar bar) {
++        MagnetBossBar bossBar = bossBars.remove(bar);
++        if (bossBar != null) {
++            bossBar.remove(handle());
++        }
++    }
++
++    @Override
++    public void playSound(Sound sound) {
++        playSound(sound, player.getLocation().getX(), player.getLocation().getY(), player.getLocation().getZ());
++    }
++
++    @Override
++    public void playSound(Sound sound, double x, double y, double z) {
++        player.playSound(
++                new Location(player.getWorld(), x, y, z),
++                sound.name().asString(),
++                toCategory(sound.source()),
++                sound.volume(),
++                sound.pitch()
++        );
++    }
++
++    @Override
++    public void playSound(Sound sound, Sound.Emitter emitter) {
++        playSound(sound);
++    }
++
++    @Override
++    public void stopSound(SoundStop stop) {
++        if (stop == null) {
++            return;
++        }
++        String sound = stop.sound() == null ? "" : stop.sound().asString();
++        player.stopSound(sound, toCategory(stop.source()));
++    }
++
++    @Override
++    public void sendResourcePacks(ResourcePackRequest request) {
++        List<ResourcePackInfo> packs = request.packs();
++        if (packs.isEmpty()) {
++            return;
++        }
++        ResourcePackInfo pack = packs.get(0);
++        player.setResourcePack(pack.uri().toString(), hashBytes(pack.hash()));
++        if (packs.size() > 1) {
++            MagnetConfig.log("[Magnet] 1.12.2 only supports one resource pack; ignored "
++                    + (packs.size() - 1) + " additional pack(s).");
++        }
++    }
++
++    @Override
++    public void openBook(Book book) {
++        MagnetScheduler.runOnMainThread(() -> openBookNow(book));
++    }
++
++    private void openBookNow(Book book) {
++        EntityPlayer handle = handle();
++        if (handle.playerConnection == null) {
++            return;
++        }
++
++        ItemStack item = new ItemStack(Material.WRITTEN_BOOK);
++        BookMeta meta = (BookMeta) item.getItemMeta();
++        if (meta == null) {
++            return;
++        }
++
++        meta.setTitle(plain(book.title(), 32));
++        meta.setAuthor(plain(book.author(), 32));
++        if (meta instanceof CraftMetaBook) {
++            CraftMetaBook craftMeta = (CraftMetaBook) meta;
++            craftMeta.pages.clear();
++            List<Component> pages = book.pages();
++            for (int i = 0; i < Math.min(pages.size(), 50); i++) {
++                craftMeta.pages.add(MagnetComponents.toNms(pages.get(i)));
++            }
++        }
++        item.setItemMeta(meta);
++
++        net.minecraft.server.ItemStack nmsBook = CraftItemStack.asNMSCopy(item);
++        PlayerInventory inventory = handle.inventory;
++        int slot = inventory.itemInHandIndex;
++        net.minecraft.server.ItemStack previous = inventory.getItem(slot);
++
++        inventory.setItem(slot, nmsBook);
++        handle.playerConnection.sendPacket(new PacketPlayOutSetSlot(0, 36 + slot, nmsBook));
++        handle.a(nmsBook, EnumHand.MAIN_HAND);
++
++        MagnetScheduler.runNextTick(() -> {
++            if (handle.playerConnection == null) {
++                return;
++            }
++            if (inventory.getItem(slot) == nmsBook) {
++                inventory.setItem(slot, previous);
++                handle.playerConnection.sendPacket(new PacketPlayOutSetSlot(0, 36 + slot, previous));
++            }
++        });
++    }
++
++    private EntityPlayer handle() {
++        return ((CraftPlayer) player).getHandle();
++    }
++
++    private static int ticks(java.time.Duration duration) {
++        return (int) (duration.toMillis() / 50L);
++    }
++
++    private static SoundCategory toCategory(Sound.Source source) {
++        if (source == null) {
++            return SoundCategory.MASTER;
++        }
++        try {
++            return SoundCategory.valueOf(source.name());
++        } catch (IllegalArgumentException ex) {
++            return SoundCategory.MASTER;
++        }
++    }
++
++    private static byte[] hashBytes(String hash) {
++        if (hash == null || hash.length() != 40) {
++            return null;
++        }
++        byte[] bytes = new byte[20];
++        for (int i = 0; i < bytes.length; i++) {
++            bytes[i] = (byte) Integer.parseInt(hash.substring(i * 2, i * 2 + 2), 16);
++        }
++        return bytes;
++    }
++
++    private static String plain(Component component, int maxLength) {
++        String text = MagnetText.toPlain(component).replace('\u00a7', ' ');
++        return text.length() > maxLength ? text.substring(0, maxLength) : text;
++    }
++}
+diff --git a/src/main/java/org/mineblock/magnet/adventure/MagnetScheduler.java b/src/main/java/org/mineblock/magnet/adventure/MagnetScheduler.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..0fbd0e7045187b3d444a0ef4ac6037c64667d8aa
+--- /dev/null
++++ b/src/main/java/org/mineblock/magnet/adventure/MagnetScheduler.java
+@@ -0,0 +1,35 @@
++package org.mineblock.magnet.adventure;
++
++import net.minecraft.server.MinecraftServer;
++
++/**
++ * Adventure 功能使用的主线程调度工具。
++ */
++public final class MagnetScheduler {
++
++    /**
++     * 在主线程执行任务，若当前已在主线程则立即执行。
++     *
++     * @param task 任务
++     */
++    public static void runOnMainThread(Runnable task) {
++        MinecraftServer server = MinecraftServer.getServer();
++        if (server == null || server.isMainThread()) {
++            task.run();
++        } else {
++            server.postToMainThread(task);
++        }
++    }
++
++    /**
++     * 在下一 tick 的主线程执行任务。
++     *
++     * @param task 任务
++     */
++    public static void runNextTick(Runnable task) {
++        MinecraftServer.getServer().processQueue.add(task);
++    }
++
++    private MagnetScheduler() {
++    }
++}
 diff --git a/src/main/resources/log4j2.xml b/src/main/resources/log4j2.xml
 index ff8c7d0287f53a480c4530e0465146ca5272f5f1..3536dd5f91d6829c32dea0dfb2eb60c66a4d9bf6 100644
 --- a/src/main/resources/log4j2.xml
@@ -252,3 +826,111 @@ index ff8c7d0287f53a480c4530e0465146ca5272f5f1..3536dd5f91d6829c32dea0dfb2eb60c6
                  </LoggerNamePatternSelector>
              </PatternLayout>
              <Policies>
+diff --git a/src/test/java/org/bukkit/craftbukkit/inventory/CraftMetaBookSignedAdventureTest.java b/src/test/java/org/bukkit/craftbukkit/inventory/CraftMetaBookSignedAdventureTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..34b33569c0dd4148833dd6efc581f621b4592091
+--- /dev/null
++++ b/src/test/java/org/bukkit/craftbukkit/inventory/CraftMetaBookSignedAdventureTest.java
+@@ -0,0 +1,24 @@
++package org.bukkit.craftbukkit.inventory;
++
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.event.ClickEvent;
++import net.minecraft.server.NBTTagCompound;
++import org.junit.Test;
++
++import static org.junit.Assert.assertTrue;
++
++public class CraftMetaBookSignedAdventureTest {
++
++    @Test
++    public void writtenBookPagesKeepClickEvents() {
++        CraftMetaBookSigned meta = new CraftMetaBookSigned((CraftMetaItem) null);
++        meta.pages(Component.text("click").clickEvent(ClickEvent.runCommand("/magnet")));
++
++        NBTTagCompound tag = new NBTTagCompound();
++        meta.applyToItem(tag);
++
++        String page = tag.getList("pages", 8).getString(0);
++        assertTrue(page.contains("\"clickEvent\""));
++        assertTrue(page.contains("/magnet"));
++    }
++}
+diff --git a/src/test/java/org/mineblock/magnet/adventure/MagnetTextTest.java b/src/test/java/org/mineblock/magnet/adventure/MagnetTextTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..773c8bc1abba66c9133f8745c5f902cad6252078
+--- /dev/null
++++ b/src/test/java/org/mineblock/magnet/adventure/MagnetTextTest.java
+@@ -0,0 +1,72 @@
++package org.mineblock.magnet.adventure;
++
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.event.ClickEvent;
++import net.kyori.adventure.text.event.HoverEvent;
++import net.kyori.adventure.text.format.TextColor;
++import net.kyori.adventure.text.minimessage.MiniMessage;
++import org.junit.Test;
++
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertTrue;
++
++public class MagnetTextTest {
++
++    @Test
++    public void legacyTextIsParsedBeforeComponentCreation() {
++        Component component = MagnetText.fromLegacy("\u00a7cRed");
++        String plain = MagnetText.toPlain(component);
++        assertTrue(plain.equals("Red"));
++        assertFalse(plain.contains("\u00a7"));
++    }
++
++    @Test
++    public void rgbColorsAreDownsampled() {
++        Component component = Component.text("Red", TextColor.color(0xFF0000));
++        String json = MagnetText.toJson(component);
++        assertTrue(json.contains("\"color\":\"dark_red\""));
++        assertFalse(json.contains("#ff0000"));
++    }
++
++    @Test
++    public void legacyOutputDoesNotUseHexColors() {
++        Component component = Component.text("Red", TextColor.color(0xFF0000));
++        String legacy = MagnetText.toLegacy(component);
++        assertTrue(legacy.contains("\u00a74"));
++        assertFalse(legacy.contains("\u00a7x"));
++    }
++
++    @Test
++    public void hoverTextUsesLegacyFormat() {
++        Component component = Component.text("hover")
++                .hoverEvent(HoverEvent.showText(Component.text("tip")));
++        String json = MagnetText.toJson(component);
++        assertTrue(json.contains("\"value\""));
++        assertFalse(json.contains("\"contents\""));
++    }
++
++    @Test
++    public void sectionSignsAreRemovedBeforeSerialization() {
++        Component component = Component.text("\u00a7cRed");
++        assertFalse(MagnetText.toJson(component).contains("\u00a7"));
++        assertFalse(MagnetText.toPlain(component).contains("\u00a7"));
++        assertFalse(MagnetText.toAnsi(component).contains("\u00a7"));
++    }
++
++    @Test
++    public void translatableAndClickEventsSerialize() {
++        Component component = Component.translatable("chat.type.text")
++                .clickEvent(ClickEvent.runCommand("/magnet"));
++        String json = MagnetText.toJson(component);
++        assertTrue(json.contains("\"translate\":\"chat.type.text\""));
++        assertTrue(json.contains("\"run_command\""));
++    }
++
++    @Test
++    public void miniMessageCanBeParsedByPlugins() {
++        Component component = MiniMessage.miniMessage().deserialize("<red>Hello</red>");
++        String json = MagnetText.toJson(component);
++        assertTrue(json.contains("\"color\":\"red\""));
++        assertTrue(MagnetText.toPlain(component).equals("Hello"));
++    }
++}
