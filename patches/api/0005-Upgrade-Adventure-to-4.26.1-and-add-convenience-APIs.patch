@@ -1,0 +1,280 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Wed, 21 Oct 2026 13:44:19 +0800
+Subject: [PATCH] Upgrade Adventure to 4.26.1 and add convenience APIs
+
+
+diff --git a/pom.xml b/pom.xml
+index 32e5bf698bf92390550959b2335022c6137c8dd3..e8a5a3ad676d659dcc148a69b5d46c527b89c920 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -23,7 +23,8 @@
+         <maven.compiler.source>21</maven.compiler.source>
+         <maven.compiler.target>21</maven.compiler.target>
+         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+-        <adventure.version>4.7.0</adventure.version> <!-- Paper - When updating this make sure to update the linked JavaDocs on the homepage as well! -->
++        <!-- Magnet - Adventure 4.26.1 -->
++        <adventure.version>4.26.1</adventure.version> <!-- Paper - When updating this make sure to update the linked JavaDocs on the homepage as well! -->
+     </properties>
+ 
+     <repositories>
+@@ -70,7 +71,29 @@
+             <groupId>net.kyori</groupId>
+             <artifactId>adventure-text-serializer-plain</artifactId>
+         </dependency>
++        <!-- Magnet start - Adventure 4.26.1 JSON 与 MiniMessage -->
++        <dependency>
++            <groupId>net.kyori</groupId>
++            <artifactId>adventure-text-serializer-json</artifactId>
++            <version>${adventure.version}</version>
++            <scope>compile</scope>
++        </dependency>
++        <dependency>
++            <groupId>net.kyori</groupId>
++            <artifactId>adventure-text-minimessage</artifactId>
++            <version>${adventure.version}</version>
++            <scope>compile</scope>
++        </dependency>
++        <!-- Magnet end -->
+         <!-- Paper end -->
++        <!-- Magnet start - Paper 源码使用 Checker Framework 注解 -->
++        <dependency>
++            <groupId>org.checkerframework</groupId>
++            <artifactId>checker-qual</artifactId>
++            <version>3.11.0</version>
++            <scope>compile</scope>
++        </dependency>
++        <!-- Magnet end -->
+         <dependency>
+             <groupId>it.unimi.dsi</groupId>
+             <artifactId>fastutil</artifactId>
+diff --git a/src/main/java/org/bukkit/Bukkit.java b/src/main/java/org/bukkit/Bukkit.java
+index 194261bf20bb727d207a2429fa59abf0acf61b19..253218f7f234e48e1dabbaea9887fd5e0b879ca3 100644
+--- a/src/main/java/org/bukkit/Bukkit.java
++++ b/src/main/java/org/bukkit/Bukkit.java
+@@ -937,6 +937,37 @@ public final class Bukkit {
+         return server.broadcast(message, permission);
+     }
+     // Paper end
++    // Magnet start
++    /**
++     * 向所有在线玩家广播组件或 Builder。
++     *
++     * @param message 消息组件或 Builder
++     * @return 接收人数
++     */
++    public static int broadcast(@NotNull net.kyori.adventure.text.ComponentLike message) {
++        return server.broadcast(message);
++    }
++
++    /**
++     * 向具有指定权限的接收者广播组件或 Builder。
++     *
++     * @param message 消息组件或 Builder
++     * @param permission 所需权限
++     * @return 接收人数
++     */
++    public static int broadcast(@NotNull net.kyori.adventure.text.ComponentLike message, @NotNull String permission) {
++        return server.broadcast(message, permission);
++    }
++
++    /**
++     * 向服务端所有 audience 发送组件或 Builder。
++     *
++     * @param messages 消息组件或 Builder
++     */
++    public static void sendMessage(@NotNull net.kyori.adventure.text.ComponentLike... messages) {
++        server.sendMessage(messages);
++    }
++    // Magnet end
+     /**
+      * Broadcasts the specified message to every user with the given
+      * permission name.
+diff --git a/src/main/java/org/bukkit/Server.java b/src/main/java/org/bukkit/Server.java
+index 6bae67425580fc6fe3e96306dc3cc8ee6254473a..4807e57eb5c80a4197486631a85862ceed764f53 100644
+--- a/src/main/java/org/bukkit/Server.java
++++ b/src/main/java/org/bukkit/Server.java
+@@ -798,6 +798,39 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
+      */
+     int broadcast(@NotNull net.kyori.adventure.text.Component message, @NotNull String permission);
+     // Paper end
++    // Magnet start
++    /**
++     * 向所有在线玩家广播组件或 Builder。
++     *
++     * @param message 消息组件或 Builder
++     * @return 接收人数
++     */
++    default int broadcast(@NotNull net.kyori.adventure.text.ComponentLike message) {
++        return broadcast(message.asComponent());
++    }
++
++    /**
++     * 向具有指定权限的接收者广播组件或 Builder。
++     *
++     * @param message 消息组件或 Builder
++     * @param permission 所需权限
++     * @return 接收人数
++     */
++    default int broadcast(@NotNull net.kyori.adventure.text.ComponentLike message, @NotNull String permission) {
++        return broadcast(message.asComponent(), permission);
++    }
++
++    /**
++     * 向服务端所有 audience 发送组件或 Builder。
++     *
++     * @param messages 消息组件或 Builder
++     */
++    default void sendMessage(@NotNull net.kyori.adventure.text.ComponentLike... messages) {
++        for (net.kyori.adventure.text.ComponentLike message : messages) {
++            sendMessage(message.asComponent());
++        }
++    }
++    // Magnet end
+ 
+     /**
+      * Gets the player by the given name, regardless if they are offline or
+diff --git a/src/main/java/org/bukkit/command/CommandSender.java b/src/main/java/org/bukkit/command/CommandSender.java
+index ca6d3afd6fa51c0822e289356025b51bc50f55a7..5d096898f1451d9a56b2576771f18636a2054c97 100644
+--- a/src/main/java/org/bukkit/command/CommandSender.java
++++ b/src/main/java/org/bukkit/command/CommandSender.java
+@@ -152,4 +152,16 @@ public interface CommandSender extends net.kyori.adventure.audience.Audience, Pe
+         this.sendMessage(new net.md_5.bungee.api.chat.TextComponent(components).toLegacyText());
+     }
+     // Paper end
++    // Magnet start
++    /**
++     * 依次向此接收者发送多个组件或 Builder。
++     *
++     * @param messages 消息组件或 Builder
++     */
++    default void sendMessage(@NotNull net.kyori.adventure.text.ComponentLike... messages) {
++        for (net.kyori.adventure.text.ComponentLike message : messages) {
++            sendMessage(message.asComponent());
++        }
++    }
++    // Magnet end
+ }
+diff --git a/src/main/java/org/bukkit/inventory/meta/ItemMeta.java b/src/main/java/org/bukkit/inventory/meta/ItemMeta.java
+index 49d8b1bdad79f452c863f83557ffde7e8f4749c6..1af0c59de32e714733ab5673b72d7270b36b675b 100644
+--- a/src/main/java/org/bukkit/inventory/meta/ItemMeta.java
++++ b/src/main/java/org/bukkit/inventory/meta/ItemMeta.java
+@@ -563,4 +563,38 @@ public interface ItemMeta extends Cloneable, ConfigurationSerializable, Persiste
+      */
+     boolean hasDestroyableKeys();
+     // Paper end
++    // Magnet start
++    /**
++     * 设置物品显示名；传入 null 清除。
++     *
++     * @param name 显示名组件或 Builder
++     */
++    default void displayName(@Nullable net.kyori.adventure.text.ComponentLike name) {
++        displayName(name == null ? null : name.asComponent());
++    }
++
++    /**
++     * 设置物品 lore；传入 null 清除。
++     *
++     * @param lines lore 行
++     */
++    default void lore(@Nullable net.kyori.adventure.text.ComponentLike... lines) {
++        if (lines == null) {
++            lore((List<net.kyori.adventure.text.Component>) null);
++            return;
++        }
++        List<net.kyori.adventure.text.Component> components = new java.util.ArrayList<>(lines.length);
++        for (net.kyori.adventure.text.ComponentLike line : lines) {
++            components.add(line == null ? net.kyori.adventure.text.Component.empty() : line.asComponent());
++        }
++        lore(components);
++    }
++
++    /**
++     * 清除物品 lore。
++     */
++    default void clearLore() {
++        lore((List<net.kyori.adventure.text.Component>) null);
++    }
++    // Magnet end
+ }
+diff --git a/src/main/java/org/mineblock/magnet/adventure/MagnetText.java b/src/main/java/org/mineblock/magnet/adventure/MagnetText.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..5851a1b86af04e9470ac4d2b50c5d36317a1203b
+--- /dev/null
++++ b/src/main/java/org/mineblock/magnet/adventure/MagnetText.java
+@@ -0,0 +1,74 @@
++package org.mineblock.magnet.adventure;
++
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.ComponentLike;
++import net.kyori.adventure.text.TextReplacementConfig;
++import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
++import net.kyori.adventure.text.serializer.json.JSONOptions;
++import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
++import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
++import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
++
++/**
++ * Adventure 组件与 1.16.5 文本格式之间的转换。
++ */
++public final class MagnetText {
++
++    // 1.16.5 数据版本，确保输出 clickEvent/hoverEvent 而非 1.21 的 snake_case。
++    private static final GsonComponentSerializer JSON = GsonComponentSerializer.builder()
++            .options(JSONOptions.byDataVersion().at(2586))
++            .build();
++    private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.builder()
++            .hexColors()
++            .useUnusualXRepeatedCharacterHexFormat()
++            .build();
++    private static final PlainTextComponentSerializer PLAIN = PlainTextComponentSerializer.plainText();
++
++    /**
++     * 序列化为 1.16.5 客户端可解析的 JSON。
++     *
++     * @param component 组件
++     * @return JSON 文本
++     */
++    public static @NotNull String toJson(@NotNull ComponentLike component) {
++        return JSON.serialize(withoutLegacyFormatting(component.asComponent()));
++    }
++
++    /**
++     * 转换为 legacy 文本。
++     *
++     * @param component 组件
++     * @return legacy 文本
++     */
++    public static @NotNull String toLegacy(@NotNull ComponentLike component) {
++        return LEGACY.serialize(withoutLegacyFormatting(component.asComponent()));
++    }
++
++    /**
++     * 转换为纯文本。
++     *
++     * @param component 组件
++     * @return 纯文本
++     */
++    public static @NotNull String toPlain(@NotNull ComponentLike component) {
++        return PLAIN.serialize(withoutLegacyFormatting(component.asComponent()));
++    }
++
++    /**
++     * 解析 legacy 文本。
++     *
++     * @param text legacy 文本
++     * @return 组件
++     */
++    public static @NotNull Component fromLegacy(@Nullable String text) {
++        return text == null ? Component.empty() : LEGACY.deserialize(text);
++    }
++
++    private static Component withoutLegacyFormatting(Component component) {
++        return component.replaceText(TextReplacementConfig.builder().matchLiteral("\u00a7").replacement("").build());
++    }
++
++    private MagnetText() {
++    }
++}

@@ -1,0 +1,131 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Wed, 21 Oct 2026 13:44:24 +0800
+Subject: [PATCH] Upgrade Adventure to 4.26.1
+
+
+diff --git a/pom.xml b/pom.xml
+index 4737439b2933377744c40cab800ff73493235e15..a557040790a983b69abcb1c9680f7b209f1aefcd 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -48,6 +48,14 @@
+             <version>${project.version}</version>
+             <scope>compile</scope>
+         </dependency>
++        <!-- Magnet start - Paper 源码使用 Checker Framework 注解 -->
++        <dependency>
++            <groupId>org.checkerframework</groupId>
++            <artifactId>checker-qual</artifactId>
++            <version>3.11.0</version>
++            <scope>compile</scope>
++        </dependency>
++        <!-- Magnet end -->
+         <dependency>
+             <groupId>com.destroystokyo.paper</groupId>
+             <artifactId>paper-mojangapi</artifactId>
+diff --git a/src/main/java/io/papermc/paper/adventure/PaperAdventure.java b/src/main/java/io/papermc/paper/adventure/PaperAdventure.java
+index 822ffa8e4b554fd6aa7ce1b2bb68c198c863d86c..829550e6fad1e02dd193287c3d038e96bf075cb1 100644
+--- a/src/main/java/io/papermc/paper/adventure/PaperAdventure.java
++++ b/src/main/java/io/papermc/paper/adventure/PaperAdventure.java
+@@ -18,6 +18,7 @@ import net.kyori.adventure.text.TranslatableComponent;
+ import net.kyori.adventure.text.flattener.ComponentFlattener;
+ import net.kyori.adventure.text.format.TextColor;
+ import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
++import net.kyori.adventure.text.serializer.json.JSONOptions; // Magnet
+ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+ import net.kyori.adventure.text.serializer.plain.PlainComponentSerializer;
+ import net.kyori.adventure.translation.GlobalTranslator;
+@@ -84,9 +85,11 @@ public final class PaperAdventure {
+     public static final LegacyComponentSerializer LEGACY_AMPERSAND = LegacyComponentSerializer.builder().character(LegacyComponentSerializer.AMPERSAND_CHAR).hexColors().build(); // Purpur
+     public static final PlainComponentSerializer PLAIN = PlainComponentSerializer.builder().flattener(FLATTENER).build();
+     public static final GsonComponentSerializer GSON = GsonComponentSerializer.builder()
++        .options(JSONOptions.byDataVersion().at(2586)) // Magnet - 1.16.5 JSON 格式
+         .legacyHoverEventSerializer(NBTLegacyHoverEventSerializer.INSTANCE)
+         .build();
+     public static final GsonComponentSerializer COLOR_DOWNSAMPLING_GSON = GsonComponentSerializer.builder()
++        .options(JSONOptions.byDataVersion().at(2586)) // Magnet - 1.16.5 JSON 格式
+         .legacyHoverEventSerializer(NBTLegacyHoverEventSerializer.INSTANCE)
+         .downsampleColors()
+         .build();
+diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java b/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java
+index bf1b6fa34b32730b493c37d3a0aa69a904c2d2b6..25abeaab336027541990041dcfefa7fcb4aeed3e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java
++++ b/src/main/java/org/bukkit/craftbukkit/inventory/CraftMetaBook.java
+@@ -298,7 +298,7 @@ public class CraftMetaBook extends CraftMetaItem implements BookMeta {
+     @Override
+     public net.kyori.adventure.text.Component page(final int page) {
+         Validate.isTrue(isValidPage(page), "Invalid page number");
+-        return this instanceof CraftMetaBookSigned ? net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().deserialize(pages.get(page - 1)) : io.papermc.paper.adventure.PaperAdventure.LEGACY_SECTION_UXRC.deserialize(pages.get(page - 1));
++        return this instanceof CraftMetaBookSigned ? io.papermc.paper.adventure.PaperAdventure.GSON.deserialize(pages.get(page - 1)) : io.papermc.paper.adventure.PaperAdventure.LEGACY_SECTION_UXRC.deserialize(pages.get(page - 1)); // Magnet - 1.16.5 JSON
+     }
+ 
+     @Override
+@@ -309,14 +309,14 @@ public class CraftMetaBook extends CraftMetaItem implements BookMeta {
+         if (data == null) {
+             data = net.kyori.adventure.text.Component.empty();
+         }
+-        pages.set(page - 1, this instanceof CraftMetaBookSigned ? net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().serialize(data) : io.papermc.paper.adventure.PaperAdventure.LEGACY_SECTION_UXRC.serialize(data));
++        pages.set(page - 1, this instanceof CraftMetaBookSigned ? io.papermc.paper.adventure.PaperAdventure.GSON.serialize(data) : io.papermc.paper.adventure.PaperAdventure.LEGACY_SECTION_UXRC.serialize(data)); // Magnet - 1.16.5 JSON
+     }
+ 
+     @Override
+     public List<net.kyori.adventure.text.Component> pages() {
+         if (this.pages == null) return ImmutableList.of();
+         if (this instanceof CraftMetaBookSigned)
+-            return pages.stream().map(net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson()::deserialize).collect(ImmutableList.toImmutableList());
++            return pages.stream().map(io.papermc.paper.adventure.PaperAdventure.GSON::deserialize).collect(ImmutableList.toImmutableList()); // Magnet - 1.16.5 JSON
+         else
+             return pages.stream().map(io.papermc.paper.adventure.PaperAdventure.LEGACY_SECTION_UXRC::deserialize).collect(ImmutableList.toImmutableList());
+     }
+@@ -349,7 +349,7 @@ public class CraftMetaBook extends CraftMetaItem implements BookMeta {
+                 page = net.kyori.adventure.text.Component.empty();
+             }
+ 
+-            this.pages.add(this instanceof CraftMetaBookSigned ? net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson().serialize(page) : io.papermc.paper.adventure.PaperAdventure.LEGACY_SECTION_UXRC.serialize(page));
++            this.pages.add(this instanceof CraftMetaBookSigned ? io.papermc.paper.adventure.PaperAdventure.GSON.serialize(page) : io.papermc.paper.adventure.PaperAdventure.LEGACY_SECTION_UXRC.serialize(page)); // Magnet - 1.16.5 JSON
+         }
+     }
+ 
+diff --git a/src/test/java/io/papermc/paper/adventure/PaperAdventureJsonTest.java b/src/test/java/io/papermc/paper/adventure/PaperAdventureJsonTest.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..768c79524f1529c16317935ede8c3c799969ac0f
+--- /dev/null
++++ b/src/test/java/io/papermc/paper/adventure/PaperAdventureJsonTest.java
+@@ -0,0 +1,37 @@
++package io.papermc.paper.adventure;
++
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.event.ClickEvent;
++import net.kyori.adventure.text.event.HoverEvent;
++import net.kyori.adventure.text.format.TextColor;
++import org.junit.Test;
++
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertTrue;
++
++/**
++ * 校验 PaperAdventure 的 JSON 序列化保持 1.16.5 格式。
++ */
++public class PaperAdventureJsonTest {
++
++    @Test
++    public void uses116JsonFormat() {
++        String click = PaperAdventure.GSON.serialize(Component.text("x").clickEvent(ClickEvent.runCommand("/magnet")));
++        assertTrue(click.contains("\"clickEvent\""));
++        assertFalse(click.contains("click_event"));
++
++        String hover = PaperAdventure.GSON.serialize(Component.text("x").hoverEvent(HoverEvent.showText(Component.text("tip"))));
++        assertTrue(hover.contains("\"hoverEvent\""));
++        assertFalse(hover.contains("hover_event"));
++    }
++
++    @Test
++    public void keepsRgbAndDownsampling() {
++        TextColor color = TextColor.color(0x123456);
++        String rgb = PaperAdventure.GSON.serialize(Component.text("x", color));
++        assertTrue(rgb.contains("#123456"));
++
++        String downsampled = PaperAdventure.COLOR_DOWNSAMPLING_GSON.serialize(Component.text("x", color));
++        assertFalse(downsampled.contains("#"));
++    }
++}
