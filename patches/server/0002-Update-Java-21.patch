@@ -1,9 +1,35 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
 Date: Sat, 1 Jun 2024 11:27:58 +0800
-Subject: [PATCH] Remove java version checker
+Subject: [PATCH] Update Java 21
 
 
+diff --git a/pom.xml b/pom.xml
+index 9505999d621395c084ecbf24ef2d7f5014e6e7d9..d1b05163ab4963d7287c98d95eba580e0fd16a96 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -14,8 +14,9 @@
+         <bt.name>git</bt.name>
+         <minecraft.version>1.16.5</minecraft.version>
+         <minecraft_version>1_16_R3</minecraft_version>
+-        <maven.compiler.source>1.8</maven.compiler.source>
+-        <maven.compiler.target>1.8</maven.compiler.target>
++        <!-- Magnet - Java 21, Thank you. -->
++        <maven.compiler.source>21</maven.compiler.source>
++        <maven.compiler.target>21</maven.compiler.target>
+     </properties>
+ 
+     <parent>
+@@ -107,7 +108,8 @@
+         <dependency>
+             <groupId>org.ow2.asm</groupId>
+             <artifactId>asm</artifactId>
+-            <version>9.1</version>
++            <!-- Magnet - ASM 9.7.1 支持 Java 21 字节码 -->
++            <version>9.7.1</version>
+             <scope>compile</scope>
+         </dependency>
+         <dependency>
 diff --git a/src/main/java/io/papermc/paper/util/PaperJvmChecker.java b/src/main/java/io/papermc/paper/util/PaperJvmChecker.java
 deleted file mode 100644
 index fdf3ff8894e5e202229d1be52fe3c92ea039ef15..0000000000000000000000000000000000000000
@@ -81,22 +107,19 @@ index ee75fe091f7fd28426b9af329358ea0deb24d589..ad6500eae13f89ae294341e1c7cd9965
                  org.spigotmc.WatchdogThread.tick(); // Paper
                  org.spigotmc.WatchdogThread.hasStarted = true; // Paper
 diff --git a/src/main/java/org/bukkit/craftbukkit/Main.java b/src/main/java/org/bukkit/craftbukkit/Main.java
-index 73513638dd024cb1cdd49c705921f0bcf1935968..697aac2e79af290b4bc9ec6effd656f9043158b3 100644
+index 73513638dd024cb1cdd49c705921f0bcf1935968..5aecbb1802539a2d2a7e335a50bb2853cfea6a84 100644
 --- a/src/main/java/org/bukkit/craftbukkit/Main.java
 +++ b/src/main/java/org/bukkit/craftbukkit/Main.java
-@@ -232,11 +232,15 @@ public class Main {
+@@ -232,12 +232,6 @@ public class Main {
                  return;
              }
  
-+            // Magnet start - Java 17 and above is good
-+            /*
-             float javaVersion = Float.parseFloat(System.getProperty("java.class.version"));
-             if (javaVersion > 60.0) {
-                 System.err.println("Unsupported Java detected (" + javaVersion + "). Only up to Java 16 is supported.");
-                 if (!Boolean.getBoolean("Paper.IgnoreJavaVersion")) return; // Paper
-             }
-+            */
-+            // Magnet end
- 
+-            float javaVersion = Float.parseFloat(System.getProperty("java.class.version"));
+-            if (javaVersion > 60.0) {
+-                System.err.println("Unsupported Java detected (" + javaVersion + "). Only up to Java 16 is supported.");
+-                if (!Boolean.getBoolean("Paper.IgnoreJavaVersion")) return; // Paper
+-            }
+-
              try {
                  // Paper start - Handled by TerminalConsoleAppender
+                 /*

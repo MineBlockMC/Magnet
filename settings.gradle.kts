@@ -1,20 +1,20 @@
 import xyz.jpenilla.toothpick.setupToothpickProject
-import java.util.Locale
-
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         gradlePluginPortal()
         mavenCentral()
-        maven("https://repo.jpenilla.xyz/snapshots")
     }
 }
 
 plugins {
-    id("xyz.jpenilla.toothpick.settings") version "1.1.0-SNAPSHOT"
+    id("xyz.jpenilla.toothpick.settings")
 }
 
 val forkName = "Magnet"
-rootProject.name = forkName.toLowerCase(Locale.ROOT)
+rootProject.name = forkName.lowercase()
+// Magnet - Gradle 9 要求 included project 目录在配置期存在；applyPatches 会清理并重新克隆
+rootDir.resolve("$forkName-API").mkdirs()
+rootDir.resolve("$forkName-Server").mkdirs()
 setupToothpickProject(rootProject, forkName)

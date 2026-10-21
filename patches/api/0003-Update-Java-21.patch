@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Tue, 20 Oct 2026 11:20:41 +0800
+Subject: [PATCH] Update Java 21
+
+
+diff --git a/pom.xml b/pom.xml
+index ef1dafaa050c2c2bb782182aec41b67459cfdad3..32e5bf698bf92390550959b2335022c6137c8dd3 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -19,8 +19,9 @@
+ 
+     <properties>
+         <!-- <skipTests>true</skipTests> Paper - This [was] not going to end well -->
+-        <maven.compiler.source>1.8</maven.compiler.source>
+-        <maven.compiler.target>1.8</maven.compiler.target>
++        <!-- Magnet - Java 21, Thank you. -->
++        <maven.compiler.source>21</maven.compiler.source>
++        <maven.compiler.target>21</maven.compiler.target>
+         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+         <adventure.version>4.7.0</adventure.version> <!-- Paper - When updating this make sure to update the linked JavaDocs on the homepage as well! -->
+     </properties>
+@@ -172,19 +173,20 @@
+         <dependency>
+             <groupId>org.ow2.asm</groupId>
+             <artifactId>asm-tree</artifactId>
+-            <version>9.1</version>
++            <!-- Magnet - ASM 9.7.1 支持 Java 21 字节码 -->
++            <version>9.7.1</version>
+             <scope>test</scope>
+         </dependency>
+         <!-- ASM -->
+         <dependency>
+             <groupId>org.ow2.asm</groupId>
+             <artifactId>asm</artifactId>
+-            <version>9.0</version>
++            <version>9.7.1</version>
+         </dependency>
+         <dependency>
+             <groupId>org.ow2.asm</groupId>
+             <artifactId>asm-commons</artifactId>
+-            <version>9.0</version>
++            <version>9.7.1</version>
+         </dependency>
+     </dependencies>
+ 
