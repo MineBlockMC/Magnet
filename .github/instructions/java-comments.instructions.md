@@ -6,7 +6,7 @@ applyTo: "**/*.java"
 
 Magnet 通过补丁维护上游代码（见 [copilot-instructions.md](../copilot-instructions.md)），注释首先要让 fork 改动可追溯，并保证上游同步时不产生冲突。
 本规范只适用于 Magnet 自己新增的代码和标记块：**注释、Javadoc 和 `magnet.yml` 选项说明一律使用简体中文**；标识符、API 名、包名、配置键和日志原文保持英文。上游原有注释保持原样，不要翻译、改写或“整理”。
-编译目标是 **Java 17**，不要使用 Java 23 才引入的 `///` 文档注释。
+编译目标是 **Java 21**（`build-logic` 的 Kotlin 插件除外），不要使用 Java 23 才引入的 `///` 文档注释。
 
 ## 1. 上游文件中的改动必须带 Magnet 标记
 
@@ -39,7 +39,7 @@ public int velocityLoginMessageId = -1; // Magnet - Velocity 现代转发
 - 不要改写、删除或“整理”上游已有的 `// Paper start`、`// CraftBukkit`、`// Spigot` 等标记；自己的标记只包住最小改动范围。
 - 上游原有注释保持原样（包括其中的英文说明）；只翻译和编写 Magnet 自己新增的注释。
 - 禁用上游行为时不要删除代码，保留原行并注释掉，必要时补一句中文说明，便于上游同步时对照。
-- Gradle 脚本、XML、`.gitignore` 等非 Java 文件使用对应语法的 Magnet 标记（如 `// Magnet -`、`<!-- Magnet - -->`、`# Magnet -`）；`grep "Magnet"` 用于审计 fork 的全部改动。
+- Gradle 脚本、XML、`.gitignore` 等非 Java 文件使用对应语法的 Magnet 标记（如 `// Magnet -`、`<!-- Magnet - -->`、`.gitignore` 中的 `# Magnet` 分节标题）；`grep "Magnet"` 用于审计 fork 的全部改动。
 
 ## 2. Javadoc
 
