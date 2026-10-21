@@ -1,0 +1,20 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E6=B5=81=E5=85=89?= <i@dreamvoid.me>
+Date: Sat, 1 Jun 2024 15:27:38 +0800
+Subject: [PATCH] Upgrade Log4J 2.26.1
+
+
+diff --git a/pom.xml b/pom.xml
+index d1b05163ab4963d7287c98d95eba580e0fd16a96..4737439b2933377744c40cab800ff73493235e15 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -31,7 +31,8 @@
+             <dependency>
+                 <groupId>org.apache.logging.log4j</groupId>
+                 <artifactId>log4j-bom</artifactId>
+-                <version>2.11.2</version>
++                <!-- Magnet - 升级 Log4j 2.26.1 以修复安全漏洞 -->
++                <version>2.26.1</version>
+                 <type>pom</type>
+                 <scope>import</scope>
+             </dependency>

@@ -158,6 +158,19 @@ internal fun Project.configureServerProject(subproject: ToothpickSubproject) {
     }
   }
 
+  // Magnet start - minecraft-server 自带旧版 Log4j 类，先把该依赖移出自动打包，
+  // 再排除其中的 Log4j 类重新加入其余类，避免覆盖 log4j-core 2.26.1
+  val minecraftServerJar = project.configurations.named("runtimeClasspath").map { configuration ->
+    configuration.files.single { it.name.startsWith("minecraft-server-") && it.extension == "jar" }
+  }
+  shadowJar.dependencies {
+    exclude { it.moduleGroup == "io.papermc" && it.moduleName == "minecraft-server" }
+  }
+  shadowJar.from(minecraftServerJar.map { project.zipTree(it) }) {
+    exclude("org/apache/logging/log4j/**")
+  }
+  // Magnet end
+
   // Magnet - minecraft-server 依赖里的 vanilla Main 重定位后会与项目 Main 重名，
   // 保留带 main(OptionSet) 的项目版本，移除 vanilla 版本
   shadowJar.doLast {
