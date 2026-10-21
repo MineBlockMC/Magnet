@@ -12,6 +12,7 @@ Java 源码位于 `Magnet-API/` 和 `Magnet-Server/`，但**这两个目录不�
 - `Purpur/` 是根仓库的子模块，锁定在 `ver/1.16.5`；内部还有 `Paper/` 子模块。不要直接修改 `Purpur/` 或 `Purpur/Paper/` 下的文件，也不要把 `Purpur/patches/` 当作 Magnet 的补丁。更新上游用 `gradlew updateUpstream`，再运行 `gradlew applyPatches`。
 - 根仓库只跟踪 `patches/`、构建脚本、README 和 `.github/` 等手写文件。不要代替用户提交根仓库；补丁生成后提示用户审阅并提交。
 - `Magnet-API`、`Magnet-Server`、`last-purpur`、`magnetclip.jar`、`*clip.jar` 均被 `.gitignore` 忽略，不要把它们当作可提交的源码。
+- 检索提示：`file_search`/`grep_search` 默认遵守 `.gitignore`，会跳过 `Magnet-API`/`Magnet-Server`；搜索这两个目录时开启 `includeIgnoredFiles`，或直接读取文件。
 
 ## 构建、测试与打包
 
@@ -41,8 +42,8 @@ gradlew :magnet-server:test --tests "org.bukkit.BiomeTest.testBukkitToMinecraft"
 ```
 
 - `paperclipName` 已设置为 `magnetclip`，产物为根目录下的 `magnetclip.jar`。
-- 测试基于 JUnit 4；Toothpick 会排除 `org/bukkit/craftbukkit/inventory/ItemStack*Test`。
-- 运行测试服务器：`gradlew runServer`（打包后的 Shadow JAR）、`gradlew runDevServer`（未重定位的类，主类 `org.bukkit.craftbukkit.Main`）；工作目录是根目录下的 `run/`，首次运行需同意 EULA。
+- 测试基于 JUnit 4；Toothpick 会排除 `org/bukkit/craftbukkit/inventory/ItemStack*Test`。`gradlew build -Pfast` 会跳过测试和 Javadoc，适合快速验证编译。
+- 运行测试服务器：`gradlew runServer`（打包后的 Shadow JAR），工作目录是根目录下的 `run/`，首次运行需把 `run/eula.txt` 设为 `true`；`gradlew runDevServer`（未重定位的类，主类 `org.bukkit.craftbukkit.Main`）在本机可能因 Aether `repository == null` 的 NPE 崩溃，冒烟测试优先用 `runServer`。
 - `gradlew cleanSubprojects` / `gradlew cleanToothpick` 会删除生成目录（后者还会删除 `Purpur` 的工作区），不要在有未提交改动时使用。
 - 如果 `:magnet-server:compileJava` 在未改动的 NMS 文件上报大量错误，先执行 `gradlew :magnet-server:clean :magnet-server:compileJava`；最终以 `gradlew paperclip` 的结果为准。
 
@@ -60,24 +61,34 @@ gradlew upstreamCommit  # 在根仓库提交子模块更新
 
 - `:magnet-api` ← `Magnet-API`：Bukkit/Paper/Purpur API，补丁在 `patches/api`。
 - `:magnet-server` ← `Magnet-Server`：CraftBukkit + NMS（`net.minecraft.server`，源码层不重定位），补丁在 `patches/server`。
-- Toothpick 已从 1.12.2 移植并 vendored 到 `build-logic/`，通过 `pluginManagement { includeBuild("build-logic") }` 引入，适配 Gradle 9 + Shadow 9。修改 `build-logic/` 后运行 `gradlew help --warning-mode all` 验证。
-- `subprojects/api.gradle.kts` 只添加 `adventure-text-minimessage 4.1.0-SNAPSHOT`；`subprojects/server.gradle.kts` 只添加 `rhino-js-engine 1.7.7.1`。其余构建逻辑来自上游 POM 和 Toothpick。
+- Toothpick 已从 1.12.2 移植并 vendored 到 `build-logic/`（版本 `1.1.0-Magnet`，自身目标 Java 17），通过 `pluginManagement { includeBuild("build-logic") }` 引入，适配 Gradle 9 + Shadow 9。修改 `build-logic/` 后运行 `gradlew help --warning-mode all` 验证。
+- `subprojects/api.gradle.kts` 只添加 `net.kyori:adventure-text-minimessage:4.26.1`；`subprojects/server.gradle.kts` 只添加 `rhino-js-engine 1.7.7.1`。其余构建逻辑来自上游 POM 和 Toothpick。
+- `build-logic` 的 Magnet 定制不要随手删除：`ConfigureSubprojects.kt` 从 Shadow 中排除 `io.papermc:minecraft-server`，再补回除 `org/apache/logging/log4j/**` 外的类（避免旧 Log4j 覆盖 2.26.1），并在打包后移除 vanilla `Main.class`（否则重定位后与项目 `Main` 冲突）；`Paperclip.kt` 临时改写 Paperclip 的仓库地址；`SetupUpstream.kt` 为旧 SpecialSource 覆盖 ASM 9.9.1，并用 Git Bash 运行 `Paper/paper patch`。
 - 配置：`nmsPackage = "1_16_R3"`，版本 `1.16.5-R0.1-SNAPSHOT`，groupId `org.mineblock.magnet`，版本号 `git-Magnet-<BUILD_NUMBER 或 commit hash>`。
 - 配置文件默认放在 `config/`：`bukkit.yml`、`commands.yml`、`spigot.yml`、`paper.yml`、`tuinity.yml`、`purpur.yml`、`help.yml`、`magnet.yml`。
-- 品牌已改为 Magnet；版本检查由 `org.mineblock.magnet.MagnetVersionFetcher` 负责（GitHub 分支 `ver/1.16.5`）；Timings 默认关闭，Log4j 使用 `nolookups`。
+- 品牌已改为 Magnet；版本检查由 `org.mineblock.magnet.MagnetVersionFetcher` 负责（GitHub 分支 `ver/1.16.5`）；Timings 相关代码已移除（仅保留上游仍引用的 `getTuinityConfig`、`Counter` 等），Log4j 使用 `nolookups` 并升级到 2.26.1。
 
-### Magnet 特有代码（`Magnet-Server/src/main/java/org/mineblock/magnet/`）
+### Magnet 特有代码
+
+服务端（`Magnet-Server/src/main/java/org/mineblock/magnet/`）：
 
 - `MagnetConfig`：读写 `config/magnet.yml`；`init(File)` 后通过反射调用所有无参、返回 `void` 的 `private static` 方法；提供 `getBoolean`、`getInt`、`getDouble`、`getString`、`getList`，签名均为 `(path, default)`；`log(String)` / `log(Level, String)` 受 `verbose` 控制，当前没有 `logError`，也没有统一的 `[Magnet]` 前缀。
-- `MagnetWorldConfig`：按世界读取 `world-settings.default.<path>`，`world-settings.<world>.<path>` 可覆盖；`CraftServer` 对每个世界调用 `world.magnetConfig.init()`。
+- `MagnetWorldConfig`：按世界读取 `world-settings.default.<path>`，`world-settings.<world>.<path>` 可覆盖；`net.minecraft.world.level.World` 持有 `magnetConfig` 字段，`CraftServer` 对每个世界调用 `world.magnetConfig.init()`。
 - `MagnetCommand`：`/magnet reload|version`。
 - `MagnetVersionFetcher`：GitHub 版本检查。
-- API 侧只有 `Server#getMagnetConfig()` 默认方法；`CraftServer` 返回 `MagnetConfig.config`。
-- 本版本**没有** 1.12.2 的 Velocity 现代转发、`MagnetText` / `org.mineblock.magnet.adventure`、`MagnetConfig.logError` 等；不要照搬这些符号。
+
+API 侧（`Magnet-API/src/main/java/org/mineblock/magnet/`）：
+
+- `MagnetText`：Adventure 组件与 1.16.5 文本互转；JSON 序列化固定到数据版本 2586（与 `PaperAdventure` 一致），提供 `toJson`、`toLegacy`、`toPlain`、`fromLegacy`。
+- `Server`、`Bukkit`、`CommandSender`、`ItemMeta` 增加了接受 `ComponentLike` 的便捷重载（`broadcast`、`sendMessage`、`displayName`、`lore`、`clearLore`）。
+- `Server.Spigot#getMagnetConfig()` 返回 `MagnetConfig.config`，由 `CraftServer` 实现。
+- 本版本**没有** 1.12.2 的 Velocity 现代转发、`MagnetConfig.logError` 等；不要照搬这些符号。
 
 ## 关键约定
 
 - 对上游文件（Paper/Purpur/CraftBukkit/NMS）的每一处改动都必须加 Magnet 标记；规则见 [Java 注释规范](instructions/java-comments.instructions.md)。`org.mineblock.magnet.*` 下的新文件整体属于 Magnet，不需要标记。
+- 非 Java 文件（`*.gradle.kts`、`pom.xml`、`*.yml`、`.gitignore` 等）的 fork 改动用对应语法的 Magnet 标记（`// Magnet -`、`<!-- Magnet - -->`、`# Magnet -`）。
+- 详细规范：Gradle/Kotlin 脚本见 [Gradle 与 build-logic 规范](instructions/gradle-build-logic.instructions.md)，补丁文件见 [Magnet 补丁规范](instructions/patches.instructions.md)。
 - 上游原有注释保持原样；Magnet 新增的注释、Javadoc 和配置说明使用简体中文。
 - 源码语言级别是 **Java 21**（`sourceCompatibility`/`targetCompatibility` 均为 21）。上游代码仍保持 Java 8 风格；Magnet 新增代码可以使用 Java 21 语法，但不要为了用新语法重写上游代码。`///` 文档注释仍是 Java 23+ 特性，不要使用。
 - 优先做增量补丁：保持最小 diff，不要重排或改写无关行；在 `Magnet-API`/`Magnet-Server` 中用完整限定名引用 Magnet 类，避免新增 import 造成补丁噪音。
@@ -94,4 +105,6 @@ gradlew upstreamCommit  # 在根仓库提交子模块更新
 - `Magnet-API`/`Magnet-Server` 不在根仓库 Git 中，根仓库 `git status` 看不到它们的修改。
 - `Purpur/` 及其 `Paper/` 是子模块，改动会被 `updateUpstream`/`setupUpstream` 重置。
 - `paperclip` 与 `paper patch` 需要 Maven；`setupUpstream` 需要 Git Bash，不需要额外的 JDK（旧 SpecialSource 会在 setup 时自动打 ASM 补丁）。
-- 1.16.5 的 Adventure 是 4.1.0-SNAPSHOT（1.12.2 是 5.2.0），组件 API 不同（例如 `TextComponent.ofChildren`）；从 1.12.2 复制代码前先核对依赖版本。
+- `paperclip` 会缓存到 `<cwd>/cache/mojang_1.16.5.jar` 并从 `launcher.mojang.com` 下载；网络受限时可把 `Purpur/Paper/work/Minecraft/1.16.5/1.16.5.jar` 复制过去离线运行。
+- 全局 Git 开启提交签名但没有可用密钥时，手动 `commit --amend` 用 `git -c commit.gpgsign=false commit --amend ...`；`applyPatches` 会自行临时关闭签名。
+- 1.16.5 的 Adventure 是 **4.26.1**（1.12.2 是 5.2.0），组件 API 不同（例如 `TextComponent.ofChildren`）；从 1.12.2 复制代码前先核对依赖版本。需要 1.16.5 客户端可解析的 JSON 时用 `MagnetText.toJson`，不要直接使用默认 `GsonComponentSerializer`。

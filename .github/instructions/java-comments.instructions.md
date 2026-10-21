@@ -28,15 +28,13 @@ public final org.mineblock.magnet.MagnetWorldConfig magnetConfig; // Magnet
 ```
 
 ```java
-// Magnet start - 关闭上游的 Java 版本检查
-// SomeUpstreamChecker.checkJvm();
-// Magnet end
+// SomeUpstreamChecker.checkJvm(); // Magnet - 关闭上游的 Java 版本检查
 ```
 
 - 一处改动只加一组标记，不要逐行重复行尾标记。
 - 不要改写、删除或“整理”上游已有的 `// Paper start`、`// CraftBukkit`、`// Spigot` 等标记；自己的标记只包住最小改动范围。
 - 上游原有注释保持原样（包括其中的英文说明）；只翻译和编写 Magnet 自己新增的注释。
-- 禁用上游行为时不要删除代码，保留原行并注释掉，必要时补一句中文说明，便于上游同步时对照。
+- 在修改期间如需禁用上游行为时不要删除代码，除非本次修改的目的就是删除上游的行为。保留原行并注释掉，必要时补一句中文说明，便于上游同步时对照。
 - Gradle 脚本、XML、`.gitignore` 等非 Java 文件使用对应语法的 Magnet 标记（如 `// Magnet -`、`<!-- Magnet - -->`、`# Magnet -`）；`grep "Magnet"` 用于审计 fork 的全部改动。
 
 ## 2. Javadoc
